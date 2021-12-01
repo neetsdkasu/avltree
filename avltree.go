@@ -235,7 +235,7 @@ type insertHelper struct {
 	value           *interface{}
 }
 
-func (helper *insertHelper) NewNode() RealNode {
+func (helper *insertHelper) newNode() RealNode {
 	return (*helper.tree).NewNode(nil, nil, 1, *helper.key, *helper.value)
 }
 
@@ -249,7 +249,7 @@ func (helper *insertHelper) allowDuplicateKeys() bool {
 
 func (helper *insertHelper) insertTo(root Node) (newRoot RealNode, ok bool) {
 	if root == nil {
-		return helper.NewNode(), true
+		return helper.newNode(), true
 	}
 	cmp := helper.compareKey(root)
 	switch {
