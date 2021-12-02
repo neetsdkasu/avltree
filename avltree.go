@@ -1,6 +1,6 @@
 package avltree
 
-type NodeIteratorCallBack = func(node Node) bool
+type NodeIteratorCallBack = func(node Node) (ok bool)
 
 type NodeCounter interface{ NodeCount() int }
 type NodeDeallocator interface{ ReleaseNode(node RealNode) }
@@ -78,7 +78,7 @@ func Find(tree Tree, key Key) (node Node, ok bool) {
 	return nil, false
 }
 
-func Iterate(tree Tree, descOrder bool, callBack NodeIteratorCallBack) bool {
+func Iterate(tree Tree, descOrder bool, callBack NodeIteratorCallBack) (ok bool) {
 	if descOrder {
 		return descIterateNode(tree.Root(), callBack)
 	} else {
@@ -86,19 +86,20 @@ func Iterate(tree Tree, descOrder bool, callBack NodeIteratorCallBack) bool {
 	}
 }
 
-func Range(tree Tree, descOrder bool, lower, upper Key, callBack NodeIteratorCallBack) bool {
+func Range(tree Tree, descOrder bool, lower, upper Key, callBack NodeIteratorCallBack) (ok bool) {
+	if lower == nil && upper == nil {
+		return Iterate(tree, descOrder, callBack)
+	}
+	var bounds keyBounds
 	if tree.AllowDuplicateKeys() {
-		if descOrder {
-			return descExtendedRangeNode(tree.Root(), lower, upper, callBack)
-		} else {
-			return ascExtendedRangeNode(tree.Root(), lower, upper, callBack)
-		}
+		bounds = newKeyExtendedBounds(lower, upper)
 	} else {
-		if descOrder {
-			return descRangeNode(tree.Root(), lower, upper, callBack)
-		} else {
-			return ascRangeNode(tree.Root(), lower, upper, callBack)
-		}
+		bounds = newKeyBounds(lower, upper)
+	}
+	if descOrder {
+		return descRangeNode(tree.Root(), bounds, callBack)
+	} else {
+		return ascRangeNode(tree.Root(), bounds, callBack)
 	}
 }
 
@@ -286,15 +287,26 @@ func (helper *insertHelper) insertTo(root Node) (newRoot RealNode, ok bool) {
 }
 
 func rotate(root RealNode) RealNode {
-	for {
-		switch checkBalance(root) {
-		case leftIsHigher:
-			root = rotateRight(root)
-		case rightIsHigher:
-			root = rotateLeft(root)
-		default:
-			return root
-		}
+	// 無限ループは不要な気がする
+	/*
+		    for {
+				switch checkBalance(root) {
+				case leftIsHigher:
+					root = rotateRight(root)
+				case rightIsHigher:
+					root = rotateLeft(root)
+				default:
+					return root
+				}
+			}
+	*/
+	switch checkBalance(root) {
+	case leftIsHigher:
+		return rotateRight(root)
+	case rightIsHigher:
+		return rotateLeft(root)
+	default:
+		return root
 	}
 }
 
@@ -409,124 +421,184 @@ func removeMax(root Node) (newRoot, removed Node) {
 	return newRoot, removed
 }
 
-func ascIterateNode(node Node, callBack NodeIteratorCallBack) bool {
+func ascIterateNode(node Node, callBack NodeIteratorCallBack) (ok bool) {
 	if node == nil {
+		return true
+	}
+	if !ascIterateNode(node.LeftChild(), callBack) {
 		return false
 	}
-	if ascIterateNode(node.LeftChild(), callBack) {
-		return true
-	}
-	if callBack(node) {
-		return true
+	if !callBack(node) {
+		return false
 	}
 	return ascIterateNode(node.RightChild(), callBack)
 }
 
-func descIterateNode(node Node, callBack NodeIteratorCallBack) bool {
+func descIterateNode(node Node, callBack NodeIteratorCallBack) (ok bool) {
 	if node == nil {
+		return true
+	}
+	if !descIterateNode(node.RightChild(), callBack) {
 		return false
 	}
-	if descIterateNode(node.RightChild(), callBack) {
-		return true
-	}
-	if callBack(node) {
-		return true
+	if !callBack(node) {
+		return false
 	}
 	return descIterateNode(node.LeftChild(), callBack)
 }
 
-func ascRangeNode(node Node, lower, upper Key, callBack NodeIteratorCallBack) bool {
-	if node == nil {
-		return false
-	}
-	key := node.Key()
-	cmpLower := key.CompareTo(lower)
-	if 0 < cmpLower {
-		if ascRangeNode(node.LeftChild(), lower, upper, callBack) {
-			return true
-		}
-	}
-	cmpUpper := key.CompareTo(upper)
-	if 0 <= cmpLower && cmpUpper <= 0 {
-		if callBack(node) {
-			return true
-		}
-	}
-	if cmpUpper < 0 {
-		return ascRangeNode(node.RightChild(), lower, upper, callBack)
+type boundsChecker interface {
+	includeLower() bool
+	includeKey() bool
+	includeUpper() bool
+}
+
+type keyBounds interface {
+	checkLower(key Key) boundsChecker
+	checkUpper(key Key) boundsChecker
+}
+
+func newKeyBounds(lower, upper Key) keyBounds {
+	if lower == nil {
+		return &upperBound{upper, 0}
+	} else if upper == nil {
+		return &lowerBound{lower, 0}
 	} else {
-		return false
+		return &bothBounds{lower, upper, 0}
 	}
 }
 
-func descRangeNode(node Node, lower, upper Key, callBack NodeIteratorCallBack) bool {
-	if node == nil {
-		return false
-	}
-	key := node.Key()
-	cmpUpper := key.CompareTo(upper)
-	if cmpUpper < 0 {
-		if descRangeNode(node.RightChild(), lower, upper, callBack) {
-			return true
-		}
-	}
-	cmpLower := key.CompareTo(lower)
-	if 0 <= cmpLower && cmpUpper <= 0 {
-		if callBack(node) {
-			return true
-		}
-	}
-	if 0 < cmpLower {
-		return descRangeNode(node.LeftChild(), lower, upper, callBack)
+func newKeyExtendedBounds(lower, upper Key) keyBounds {
+	if lower == nil {
+		return &upperBound{upper, 1}
+	} else if upper == nil {
+		return &lowerBound{lower, 1}
 	} else {
-		return false
+		return &bothBounds{lower, upper, 1}
 	}
 }
 
-func ascExtendedRangeNode(node Node, lower, upper Key, callBack NodeIteratorCallBack) bool {
+type bothBounds struct {
+	lower, upper Key
+	ext          int
+}
+
+func (bounds *bothBounds) checkLower(key Key) boundsChecker {
+	return &lowerBoundsChecker{key.CompareTo(bounds.lower), bounds.ext}
+}
+
+func (bounds *bothBounds) checkUpper(key Key) boundsChecker {
+	return &upperBoundsChecker{key.CompareTo(bounds.upper), bounds.ext}
+}
+
+type upperBound struct {
+	upper Key
+	ext   int
+}
+
+func (bounds *upperBound) checkLower(key Key) boundsChecker {
+	return noBoundsChecker{}
+}
+
+func (bounds *upperBound) checkUpper(key Key) boundsChecker {
+	return &upperBoundsChecker{key.CompareTo(bounds.upper), bounds.ext}
+}
+
+type lowerBound struct {
+	lower Key
+	ext   int
+}
+
+func (bounds *lowerBound) checkLower(key Key) boundsChecker {
+	return &lowerBoundsChecker{key.CompareTo(bounds.lower), bounds.ext}
+}
+
+func (bounds *lowerBound) checkUpper(key Key) boundsChecker {
+	return noBoundsChecker{}
+}
+
+type noBoundsChecker struct{}
+
+func (noBoundsChecker) includeLower() bool { return true }
+func (noBoundsChecker) includeKey() bool   { return true }
+func (noBoundsChecker) includeUpper() bool { return true }
+
+type upperBoundsChecker struct {
+	cmp, ext int
+}
+
+func (checker *upperBoundsChecker) includeLower() bool {
+	return true
+}
+
+func (checker *upperBoundsChecker) includeKey() bool {
+	return checker.cmp <= 0
+}
+
+func (checker *upperBoundsChecker) includeUpper() bool {
+	return checker.cmp < checker.ext
+}
+
+type lowerBoundsChecker struct {
+	cmp, ext int
+}
+
+func (checker *lowerBoundsChecker) includeLower() bool {
+	return -checker.ext < checker.cmp
+}
+
+func (checker *lowerBoundsChecker) includeKey() bool {
+	return 0 <= checker.cmp
+}
+
+func (checker *lowerBoundsChecker) includeUpper() bool {
+	return true
+}
+
+func ascRangeNode(node Node, bounds keyBounds, callBack NodeIteratorCallBack) (ok bool) {
 	if node == nil {
-		return false
+		return true
 	}
 	key := node.Key()
-	cmpLower := key.CompareTo(lower)
-	if 0 <= cmpLower {
-		if ascExtendedRangeNode(node.LeftChild(), lower, upper, callBack) {
-			return true
+	lower := bounds.checkLower(key)
+	if lower.includeLower() {
+		if !ascRangeNode(node.LeftChild(), bounds, callBack) {
+			return false
 		}
 	}
-	cmpUpper := key.CompareTo(upper)
-	if 0 <= cmpLower && cmpUpper <= 0 {
-		if callBack(node) {
-			return true
+	upper := bounds.checkUpper(key)
+	if lower.includeKey() && upper.includeKey() {
+		if !callBack(node) {
+			return false
 		}
 	}
-	if cmpUpper <= 0 {
-		return ascExtendedRangeNode(node.RightChild(), lower, upper, callBack)
+	if upper.includeUpper() {
+		return ascRangeNode(node.RightChild(), bounds, callBack)
 	} else {
-		return false
+		return true
 	}
 }
 
-func descExtendedRangeNode(node Node, lower, upper Key, callBack NodeIteratorCallBack) bool {
+func descRangeNode(node Node, bounds keyBounds, callBack NodeIteratorCallBack) (ok bool) {
 	if node == nil {
-		return false
+		return true
 	}
 	key := node.Key()
-	cmpUpper := key.CompareTo(upper)
-	if cmpUpper <= 0 {
-		if descExtendedRangeNode(node.RightChild(), lower, upper, callBack) {
-			return true
+	upper := bounds.checkUpper(key)
+	if upper.includeUpper() {
+		if !descRangeNode(node.RightChild(), bounds, callBack) {
+			return false
 		}
 	}
-	cmpLower := key.CompareTo(lower)
-	if 0 <= cmpLower && cmpUpper <= 0 {
-		if callBack(node) {
-			return true
+	lower := bounds.checkLower(key)
+	if lower.includeKey() && upper.includeKey() {
+		if !callBack(node) {
+			return false
 		}
 	}
-	if 0 <= cmpLower {
-		return descExtendedRangeNode(node.LeftChild(), lower, upper, callBack)
+	if lower.includeLower() {
+		return descRangeNode(node.LeftChild(), bounds, callBack)
 	} else {
-		return false
+		return true
 	}
 }

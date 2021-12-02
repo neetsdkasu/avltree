@@ -369,7 +369,7 @@ func TestAscSorted(t *testing.T) {
 		avltree.Iterate(tree, false, func(node avltree.Node) bool {
 			result = append(result, int(node.Key().(intKey)))
 			result = append(result, node.Value().(int))
-			return false
+			return true
 		})
 		return result
 	}
@@ -404,7 +404,7 @@ func TestDescSorted(t *testing.T) {
 		avltree.Iterate(tree, true, func(node avltree.Node) bool {
 			result = append(result, int(node.Key().(intKey)))
 			result = append(result, node.Value().(int))
-			return false
+			return true
 		})
 		return result
 	}
@@ -444,7 +444,7 @@ func TestAscRange(t *testing.T) {
 		avltree.Range(tree, false, lower, upper, func(node avltree.Node) bool {
 			result = append(result, int(node.Key().(intKey)))
 			result = append(result, node.Value().(int))
-			return false
+			return true
 		})
 		return result
 	}
@@ -490,7 +490,7 @@ func TestDescRange(t *testing.T) {
 		avltree.Range(tree, true, lower, upper, func(node avltree.Node) bool {
 			result = append(result, int(node.Key().(intKey)))
 			result = append(result, node.Value().(int))
-			return false
+			return true
 		})
 		return result
 	}
@@ -537,7 +537,7 @@ func TestDuplicateKeyRange(t *testing.T) {
 			values := []int(nil)
 			avltree.Range(tree, false, intKey(key), intKey(key), func(node Node) bool {
 				values = append(values, node.Value().(int))
-				return false
+				return true
 			})
 			result = append(result, values)
 		}
