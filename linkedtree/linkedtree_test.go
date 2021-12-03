@@ -9,16 +9,16 @@ import (
 
 type intKey int
 
-func (key intKey) CompareTo(other avltree.Key) int {
+func (key intKey) CompareTo(other avltree.Key) avltree.KeyOrdering {
 	v1 := int(key)
 	v2 := int(other.(intKey))
 	switch {
 	case v1 < v2:
-		return -1
+		return avltree.LessThanOtherKey
 	case v1 > v2:
-		return 1
+		return avltree.GreaterThanOtherKey
 	default:
-		return 0
+		return avltree.EqualToOtherKey
 	}
 	// return v1 - v2 は 算術オーバーフローがこわい
 }

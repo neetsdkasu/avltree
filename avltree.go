@@ -28,8 +28,16 @@ type RealNode interface {
 	SetChildren(newLeftChild, newRightChild Node, newHeight int) RealNode
 }
 
+type KeyOrdering int
+
+const (
+	LessThanOtherKey    KeyOrdering = -1
+	EqualToOtherKey     KeyOrdering = 0
+	GreaterThanOtherKey KeyOrdering = 1
+)
+
 type Key interface {
-	CompareTo(other Key) int
+	CompareTo(other Key) KeyOrdering
 }
 
 func Insert(tree Tree, replaceIfExists bool, key Key, value interface{}) (modified Tree, ok bool) {
@@ -90,12 +98,7 @@ func Range(tree Tree, descOrder bool, lower, upper Key, callBack NodeIteratorCal
 	if lower == nil && upper == nil {
 		return Iterate(tree, descOrder, callBack)
 	}
-	var bounds keyBounds
-	if tree.AllowDuplicateKeys() {
-		bounds = newKeyExtendedBounds(lower, upper)
-	} else {
-		bounds = newKeyBounds(lower, upper)
-	}
+	bounds := newKeyBounds(lower, upper, tree.AllowDuplicateKeys())
 	if descOrder {
 		return descRangeNode(tree.Root(), bounds, callBack)
 	} else {
@@ -112,6 +115,17 @@ func Count(tree Tree) int {
 		return counter.NodeCount()
 	} else {
 		return countNode(root)
+	}
+}
+
+func CountRange(tree Tree, lower, upper Key) int {
+	if lower == nil && upper == nil {
+		return Count(tree)
+	}
+	if tree.AllowDuplicateKeys() {
+		return countExtendedRange(tree.Root(), lower, upper)
+	} else {
+		return countRange(tree.Root(), lower, upper)
 	}
 }
 
@@ -145,11 +159,153 @@ func Max(tree Tree) (maximum Node, ok bool) {
 	return node, true
 }
 
+func (ordering KeyOrdering) LessThan() bool {
+	return int(ordering) < 0
+}
+
+func (ordering KeyOrdering) LessThanOrEqualTo() bool {
+	return int(ordering) <= 0
+}
+
+func (ordering KeyOrdering) EqualTo() bool {
+	return ordering == EqualToOtherKey
+}
+
+func (ordering KeyOrdering) NotEqualTo() bool {
+	return ordering != EqualToOtherKey
+}
+
+func (ordering KeyOrdering) GreaterThan() bool {
+	return 0 < int(ordering)
+}
+
+func (ordering KeyOrdering) GreaterThanOrEqualTo() bool {
+	return 0 <= int(ordering)
+}
+
+func (ordering KeyOrdering) Less(orEqual bool) bool {
+	if orEqual {
+		return ordering.LessThanOrEqualTo()
+	} else {
+		return ordering.LessThan()
+	}
+}
+
+func (ordering KeyOrdering) Greater(orEqual bool) bool {
+	if orEqual {
+		return ordering.GreaterThanOrEqualTo()
+	} else {
+		return ordering.GreaterThan()
+	}
+}
+
 func countNode(node Node) int {
 	if node == nil {
 		return 0
 	}
+	if counter, ok := node.(NodeCounter); ok {
+		return counter.NodeCount()
+	}
 	return 1 + countNode(node.LeftChild()) + countNode(node.RightChild())
+}
+
+func countRange(node Node, lower, upper Key) int {
+	if node == nil {
+		return 0
+	}
+	// lower == nil, upper == nil   ... all(leftChild) key all(rightChild)
+	// lower == nil, upper < key    ... leftChild
+	// lower == nil, key == upper   ... all(leftChild) key
+	// lower == nil, key < upper    ... all(leftChild) key rightChild
+	// upper == nil, lower < key    ... leftChild key all(rightChild)
+	// upper == nil, lower == key   ... key all(rightChild)
+	// upper == nil, key < lower    ... rightChild
+	// lower < upper < key      ... leftChild
+	// lower < upper == key     ... leftChild{upper->nil} key
+	// lower < key < upper      ... leftChild{upper->nil} key rightChild{lower->nil}
+	// key == lower < upper     ... key rightChild{lower->nil}
+	// key < lower < upper      ... rightChild
+	// lower == key == upper    ... key
+	if lower == nil {
+		if upper == nil {
+			// lower == nil, upper == nil   ... all(leftChild) key all(rightChild)
+			return countNode(node)
+		}
+		cmp := node.Key().CompareTo(upper)
+		switch {
+		case cmp.GreaterThan():
+			// lower == nil, upper < key    ... leftChild
+			return countRange(node.LeftChild(), lower, upper)
+		case cmp.EqualTo():
+			// lower == nil, key == upper   ... all(leftChild) key
+			return countNode(node.LeftChild()) + 1
+		case cmp.LessThan():
+			// lower == nil, key < upper    ... all(leftChild) key rightChild
+			return countNode(node.LeftChild()) + 1 + countRange(node.RightChild(), lower, upper)
+		default:
+			panic("unreachable?")
+		}
+	}
+	if upper == nil {
+		cmp := node.Key().CompareTo(lower)
+		switch {
+		case cmp.GreaterThan():
+			// upper == nil, lower < key    ... leftChild key all(rightChild)
+			return countRange(node.LeftChild(), lower, upper) + 1 + countNode(node.RightChild())
+		case cmp.EqualTo():
+			// upper == nil, lower == key   ... key all(rightChild)
+			return 1 + countNode(node.RightChild())
+		case cmp.LessThan():
+			// upper == nil, key < lower    ... rightChild
+			return countRange(node.RightChild(), lower, upper)
+		default:
+			panic("unreachable?")
+		}
+	}
+	key := node.Key()
+	cmpLower := key.CompareTo(lower)
+	cmpUpper := key.CompareTo(upper)
+	switch {
+	case cmpUpper.GreaterThan():
+		// lower < upper < key      ... leftChild
+		return countRange(node.LeftChild(), lower, upper)
+	case cmpLower.GreaterThan() && cmpUpper.EqualTo():
+		// lower < upper == key     ... leftChild{upper->nil} key
+		return countRange(node.LeftChild(), lower, nil) + 1
+	case cmpLower.GreaterThan() && cmpUpper.LessThan():
+		// lower < key < upper      ... leftChild{upper->nil} key rightChild{lower->nil}
+		return countRange(node.LeftChild(), lower, nil) + 1 + countRange(node.RightChild(), nil, upper)
+	case cmpLower.EqualTo() && cmpUpper.LessThan():
+		// key == lower < upper     ... key rightChild{lower->nil}
+		return 1 + countRange(node.RightChild(), nil, upper)
+	case cmpLower.LessThan():
+		// key < lower < upper      ... rightChild
+		return countRange(node.RightChild(), lower, upper)
+	case cmpLower.EqualTo() && cmpUpper.EqualTo():
+		// lower == key == upper    ... key
+		return 1
+	}
+	panic("unreachable?")
+}
+
+func countExtendedRange(node Node, lower, upper Key) int {
+	if node == nil {
+		return 0
+	}
+	// lower == nil, upper == nil   ... all(leftChild) key all(rightChild)
+	// lower == nil, upper < key    ... leftChild
+	// lower == nil, key == upper   ... all(leftChild) key rightChild
+	// lower == nil, key < upper    ... all(leftChild) key rightChild
+	// upper == nil, lower < key    ... leftChild key all(rightChild)
+	// upper == nil, lower == key   ... leftChild key all(rightChild)
+	// upper == nil, key < lower    ... rightChild
+	// lower < upper < key      ... leftChild
+	// lower < upper == key     ... leftChild{upper->nil} key rightChild{lower->nil}
+	// lower < key < upper      ... leftChild{upper->nil} key rightChild{lower->nil}
+	// key == lower < upper     ... leftChild{upper->nil} key rightChild{lower->nil}
+	// key < lower < upper      ... rightChild
+	// lower == key == upper    ... leftChild{upper->nil} key rightChild{lower->nil}
+	panic("not implemented")
 }
 
 func getHeight(node Node) int {
@@ -240,7 +396,7 @@ func (helper *insertHelper) newNode() RealNode {
 	return (*helper.tree).NewNode(nil, nil, 1, *helper.key, *helper.value)
 }
 
-func (helper *insertHelper) compareKey(node Node) int {
+func (helper *insertHelper) compareKey(node Node) KeyOrdering {
 	return (*helper.key).CompareTo(node.Key())
 }
 
@@ -254,13 +410,13 @@ func (helper *insertHelper) insertTo(root Node) (newRoot RealNode, ok bool) {
 	}
 	cmp := helper.compareKey(root)
 	switch {
-	case cmp < 0: // newKey < root.key
+	case cmp.LessThan(): // newKey < root.key
 		if newLeftChild, ok := helper.insertTo(root.LeftChild()); ok {
 			newRoot = setLeftChild(root.(RealNode), newLeftChild)
 		} else {
 			return root.(RealNode), false
 		}
-	case 0 < cmp: // root.key < newKey
+	case cmp.GreaterThan(): // root.key < newKey
 		if newRightChild, ok := helper.insertTo(root.RightChild()); ok {
 			newRoot = setRightChild(root.(RealNode), newRightChild)
 		} else {
@@ -288,6 +444,7 @@ func (helper *insertHelper) insertTo(root Node) (newRoot RealNode, ok bool) {
 
 func rotate(root RealNode) RealNode {
 	// 無限ループは不要な気がする
+	// 複数のノードをまとめて削除するとバランス崩れが発生しそうだからその時必要？
 	/*
 		    for {
 				switch checkBalance(root) {
@@ -353,14 +510,14 @@ func removeNode(root Node, key Key) (newRoot, removed Node, ok bool) {
 	}
 	cmp := key.CompareTo(root.Key())
 	switch {
-	case cmp < 0: // key < root.Key()
+	case cmp.LessThan(): // key < root.Key()
 		if tempLeftChild, node, ok := removeNode(root.LeftChild(), key); ok {
 			removed = node
 			newRoot = setLeftChild(root.(RealNode), tempLeftChild)
 		} else {
 			return nil, nil, false
 		}
-	case 0 < cmp: // root.Key() < key
+	case cmp.GreaterThan(): // root.Key() < key
 		if tempRightChild, node, ok := removeNode(root.RightChild(), key); ok {
 			removed = node
 			newRoot = setRightChild(root.(RealNode), tempRightChild)
@@ -458,29 +615,19 @@ type keyBounds interface {
 	checkUpper(key Key) boundsChecker
 }
 
-func newKeyBounds(lower, upper Key) keyBounds {
+func newKeyBounds(lower, upper Key, extended bool) keyBounds {
 	if lower == nil {
-		return &upperBound{upper, 0}
+		return &upperBound{upper, extended}
 	} else if upper == nil {
-		return &lowerBound{lower, 0}
+		return &lowerBound{lower, extended}
 	} else {
-		return &bothBounds{lower, upper, 0}
-	}
-}
-
-func newKeyExtendedBounds(lower, upper Key) keyBounds {
-	if lower == nil {
-		return &upperBound{upper, 1}
-	} else if upper == nil {
-		return &lowerBound{lower, 1}
-	} else {
-		return &bothBounds{lower, upper, 1}
+		return &bothBounds{lower, upper, extended}
 	}
 }
 
 type bothBounds struct {
 	lower, upper Key
-	ext          int
+	ext          bool
 }
 
 func (bounds *bothBounds) checkLower(key Key) boundsChecker {
@@ -493,7 +640,7 @@ func (bounds *bothBounds) checkUpper(key Key) boundsChecker {
 
 type upperBound struct {
 	upper Key
-	ext   int
+	ext   bool
 }
 
 func (bounds *upperBound) checkLower(key Key) boundsChecker {
@@ -506,7 +653,7 @@ func (bounds *upperBound) checkUpper(key Key) boundsChecker {
 
 type lowerBound struct {
 	lower Key
-	ext   int
+	ext   bool
 }
 
 func (bounds *lowerBound) checkLower(key Key) boundsChecker {
@@ -524,7 +671,8 @@ func (noBoundsChecker) includeKey() bool   { return true }
 func (noBoundsChecker) includeUpper() bool { return true }
 
 type upperBoundsChecker struct {
-	cmp, ext int
+	cmpUpper KeyOrdering
+	ext      bool
 }
 
 func (checker *upperBoundsChecker) includeLower() bool {
@@ -532,23 +680,24 @@ func (checker *upperBoundsChecker) includeLower() bool {
 }
 
 func (checker *upperBoundsChecker) includeKey() bool {
-	return checker.cmp <= 0
+	return checker.cmpUpper.LessThanOrEqualTo()
 }
 
 func (checker *upperBoundsChecker) includeUpper() bool {
-	return checker.cmp < checker.ext
+	return checker.cmpUpper.Less(checker.ext)
 }
 
 type lowerBoundsChecker struct {
-	cmp, ext int
+	cmpLower KeyOrdering
+	ext      bool
 }
 
 func (checker *lowerBoundsChecker) includeLower() bool {
-	return -checker.ext < checker.cmp
+	return checker.cmpLower.Greater(checker.ext)
 }
 
 func (checker *lowerBoundsChecker) includeKey() bool {
-	return 0 <= checker.cmp
+	return checker.cmpLower.GreaterThanOrEqualTo()
 }
 
 func (checker *lowerBoundsChecker) includeUpper() bool {
