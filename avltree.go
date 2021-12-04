@@ -110,9 +110,9 @@ func Find(tree Tree, key Key) (node Node, ok bool) {
 	for node != nil {
 		cmp := key.CompareTo(node.Key())
 		switch {
-		case cmp < 0:
+		case cmp.LessThan():
 			node = node.LeftChild()
-		case 0 < cmp:
+		case cmp.GreaterThan():
 			node = node.RightChild()
 		default:
 			return node, true
