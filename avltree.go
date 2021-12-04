@@ -1,5 +1,7 @@
 package avltree
 
+import "strings"
+
 type NodeIteratorCallBack = func(node Node) (ok bool)
 
 type NodeCounter interface{ NodeCount() int }
@@ -63,6 +65,14 @@ func (key IntKey) CompareTo(other Key) KeyOrdering {
 		return EqualToOtherKey
 	}
 	// return v1 - v2 は 算術オーバーフローがこわい
+}
+
+type StringKey string
+
+func (key StringKey) CompareTo(other Key) KeyOrdering {
+	s1 := string(key)
+	s2 := string(other.(StringKey))
+	return KeyOrdering(strings.Compare(s1, s2))
 }
 
 func Insert(tree Tree, replaceIfExists bool, key Key, value interface{}) (modified Tree, ok bool) {
@@ -330,7 +340,47 @@ func countExtendedRange(node Node, lower, upper Key) int {
 	// key == lower < upper     ... leftChild{upper->nil} key rightChild{lower->nil}
 	// key < lower < upper      ... rightChild
 	// lower == key == upper    ... leftChild{upper->nil} key rightChild{lower->nil}
-	panic("not implemented")
+	if lower == nil {
+		if upper == nil {
+			// lower == nil, upper == nil   ... all(leftChild) key all(rightChild)
+			return countNode(node)
+		}
+		if node.Key().CompareTo(upper).GreaterThan() {
+			// lower == nil, upper < key    ... leftChild
+			return countExtendedRange(node.LeftChild(), lower, upper)
+		} else {
+			// lower == nil, key == upper   ... all(leftChild) key rightChild
+			// lower == nil, key < upper    ... all(leftChild) key rightChild
+			return countNode(node.LeftChild()) + 1 + countExtendedRange(node.RightChild(), lower, upper)
+		}
+	}
+	if upper == nil {
+		if node.Key().CompareTo(lower).GreaterThanOrEqualTo() {
+			// upper == nil, lower < key    ... leftChild key all(rightChild)
+			// upper == nil, lower == key   ... leftChild key all(rightChild)
+			return countExtendedRange(node.LeftChild(), lower, upper) + 1 + countNode(node.RightChild())
+		} else {
+			// upper == nil, key < lower    ... rightChild
+			return countExtendedRange(node.RightChild(), lower, upper)
+		}
+	}
+	key := node.Key()
+	cmpLower := key.CompareTo(lower)
+	cmpUpper := key.CompareTo(upper)
+	switch {
+	case cmpUpper.GreaterThan():
+		// lower < upper < key      ... leftChild
+		return countExtendedRange(node.LeftChild(), lower, upper)
+	case cmpLower.LessThan():
+		// key < lower < upper      ... rightChild
+		return countExtendedRange(node.RightChild(), lower, upper)
+	default:
+		// lower < upper == key     ... leftChild{upper->nil} key rightChild{lower->nil}
+		// lower < key < upper      ... leftChild{upper->nil} key rightChild{lower->nil}
+		// key == lower < upper     ... leftChild{upper->nil} key rightChild{lower->nil}
+		// lower == key == upper    ... leftChild{upper->nil} key rightChild{lower->nil}
+		return countExtendedRange(node.LeftChild(), lower, nil) + 1 + countExtendedRange(node.RightChild(), nil, upper)
+	}
 }
 
 func getHeight(node Node) int {

@@ -324,15 +324,26 @@ func TestParent(t *testing.T) {
 		}
 		var invalidNode Node = nil
 		avltree.Iterate(tree, false, func(node Node) bool {
+			if parent := node.(avltree.ParentGetter).Parent(); parent != nil {
+				leftChild := parent.LeftChild()
+				rightChild := parent.RightChild()
+				if leftChild != node && rightChild != node {
+					invalidNode = node
+					return false
+				}
+			} else if tree.Root() != node {
+				invalidNode = node
+				return false
+			}
 			if leftChild, ok := node.LeftChild().(avltree.ParentGetter); ok {
 				if node != leftChild.Parent() {
-					invalidNode = node
+					invalidNode = leftChild
 					return false
 				}
 			}
 			if rightChild, ok := node.RightChild().(avltree.ParentGetter); ok {
 				if node != rightChild.Parent() {
-					invalidNode = node
+					invalidNode = rightChild
 					return false
 				}
 			}
@@ -670,6 +681,39 @@ func TestAscRange(t *testing.T) {
 			result = append(result, node.Value().(int))
 			return true
 		})
+		avltree.Range(tree, false, nil, lower, func(node avltree.Node) bool {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return true
+		})
+		avltree.Range(tree, false, upper, nil, func(node avltree.Node) bool {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return true
+		})
+		if len(list) > 1 {
+			k1, k2 = list[0].Key, list[1].Key
+			if k2 < k1 {
+				k1, k2 = k2, k1
+			}
+			lower = IntKey(k1)
+			upper = IntKey(k2)
+			avltree.Range(tree, false, lower, upper, func(node avltree.Node) bool {
+				result = append(result, int(node.Key().(IntKey)))
+				result = append(result, node.Value().(int))
+				return true
+			})
+			avltree.Range(tree, false, nil, lower, func(node avltree.Node) bool {
+				result = append(result, int(node.Key().(IntKey)))
+				result = append(result, node.Value().(int))
+				return true
+			})
+			avltree.Range(tree, false, upper, nil, func(node avltree.Node) bool {
+				result = append(result, int(node.Key().(IntKey)))
+				result = append(result, node.Value().(int))
+				return true
+			})
+		}
 		return result
 	}
 
@@ -678,16 +722,55 @@ func TestAscRange(t *testing.T) {
 			k1, k2 = k2, k1
 		}
 		list := omitDuplicates(listBase)
+		var k11, k22 int
+		if len(list) > 1 {
+			k11, k22 = list[0].Key, list[1].Key
+		}
 		sort.Slice(list, func(i, j int) bool {
 			return list[i].Key < list[j].Key
 		})
 		result := []int{}
 		for _, kv := range list {
-			if kv.Key < k1 || k2 < kv.Key {
-				continue
+			if k1 <= kv.Key && kv.Key <= k2 {
+				result = append(result, kv.Key)
+				result = append(result, kv.Value)
 			}
-			result = append(result, kv.Key)
-			result = append(result, kv.Value)
+		}
+		for _, kv := range list {
+			if kv.Key <= k1 {
+				result = append(result, kv.Key)
+				result = append(result, kv.Value)
+			}
+		}
+		for _, kv := range list {
+			if k2 <= kv.Key {
+				result = append(result, kv.Key)
+				result = append(result, kv.Value)
+			}
+		}
+		if len(list) > 1 {
+			k1, k2 = k11, k22
+			if k2 < k1 {
+				k1, k2 = k2, k1
+			}
+			for _, kv := range list {
+				if k1 <= kv.Key && kv.Key <= k2 {
+					result = append(result, kv.Key)
+					result = append(result, kv.Value)
+				}
+			}
+			for _, kv := range list {
+				if kv.Key <= k1 {
+					result = append(result, kv.Key)
+					result = append(result, kv.Value)
+				}
+			}
+			for _, kv := range list {
+				if k2 <= kv.Key {
+					result = append(result, kv.Key)
+					result = append(result, kv.Value)
+				}
+			}
 		}
 		return result
 	}
@@ -743,7 +826,7 @@ func TestDescRange(t *testing.T) {
 	}
 }
 
-func TestDuplicateKeyRange(t *testing.T) {
+func TestDuplicateKeyAscRange(t *testing.T) {
 
 	const keymax = 4
 
@@ -757,26 +840,185 @@ func TestDuplicateKeyRange(t *testing.T) {
 			avltree.Insert(tree, false, IntKey(key%keymax), kv.Value)
 		}
 		result := [][]int{}
-		for key := 0; key < keymax; key++ {
-			values := []int(nil)
-			avltree.Range(tree, false, IntKey(key), IntKey(key), func(node Node) bool {
-				values = append(values, node.Value().(int))
-				return true
-			})
-			result = append(result, values)
+		for lower := 0; lower < keymax; lower++ {
+			for upper := lower; upper < keymax; upper++ {
+				values := []int(nil)
+				avltree.Range(tree, false, IntKey(lower), IntKey(upper), func(node Node) bool {
+					values = append(values, node.Value().(int))
+					return true
+				})
+				result = append(result, values)
+			}
 		}
 		return result
 	}
 
 	g := func(list []keyAndValue) [][]int {
-		result := make([][]int, keymax)
+		table := make([][]int, keymax)
 		for _, kv := range list {
 			key := kv.Key
 			if key < 0 {
 				key ^= -1
 			}
 			key %= keymax
-			result[key] = append(result[key], kv.Value)
+			table[key] = append(table[key], kv.Value)
+		}
+		result := [][]int{}
+		for lower := 0; lower < keymax; lower++ {
+			for upper := lower; upper < keymax; upper++ {
+				values := []int(nil)
+				for key := lower; key <= upper; key++ {
+					values = append(values, table[key]...)
+				}
+				result = append(result, values)
+			}
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDuplicateKeyDescRange(t *testing.T) {
+
+	const keymax = 4
+
+	f := func(list []keyAndValue) [][]int {
+		tree := NewLinkedTree(true)
+		for _, kv := range list {
+			key := kv.Key
+			if key < 0 {
+				key ^= -1
+			}
+			avltree.Insert(tree, false, IntKey(key%keymax), kv.Value)
+		}
+		result := [][]int{}
+		for lower := 0; lower < keymax; lower++ {
+			for upper := lower; upper < keymax; upper++ {
+				values := []int(nil)
+				avltree.Range(tree, true, IntKey(lower), IntKey(upper), func(node Node) bool {
+					values = append(values, node.Value().(int))
+					return true
+				})
+				result = append(result, values)
+			}
+		}
+		return result
+	}
+
+	g := func(list []keyAndValue) [][]int {
+		table := make([][]int, keymax)
+		for _, kv := range list {
+			key := kv.Key
+			if key < 0 {
+				key ^= -1
+			}
+			key %= keymax
+			table[key] = append(table[key], kv.Value)
+		}
+		result := [][]int{}
+		for lower := 0; lower < keymax; lower++ {
+			for upper := lower; upper < keymax; upper++ {
+				values := []int(nil)
+				for key := lower; key <= upper; key++ {
+					values = append(values, table[key]...)
+				}
+				result = append(result, values)
+			}
+		}
+		for _, list := range result {
+			for i, j := 0, len(list)-1; i < j; i, j = i+1, j-1 {
+				list[i], list[j] = list[j], list[i]
+			}
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCountRange(t *testing.T) {
+
+	f := func(listBase []keyAndValue, k1, k2 int) int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		lower := IntKey(k1)
+		upper := IntKey(k2)
+		return avltree.CountRange(tree, lower, upper)
+	}
+
+	g := func(listBase []keyAndValue, k1, k2 int) int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		result := 0
+		for _, kv := range list {
+			if kv.Key < k1 || k2 < kv.Key {
+				continue
+			}
+			result++
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDuplicateKeyCountRange(t *testing.T) {
+
+	const keymax = 4
+
+	f := func(list []keyAndValue) []int {
+		tree := NewLinkedTree(true)
+		for _, kv := range list {
+			key := kv.Key
+			if key < 0 {
+				key ^= -1
+			}
+			avltree.Insert(tree, false, IntKey(key%keymax), kv.Value)
+		}
+		result := []int{}
+		for lower := 0; lower < keymax; lower++ {
+			for upper := lower; upper < keymax; upper++ {
+				count := avltree.CountRange(tree, IntKey(lower), IntKey(upper))
+				result = append(result, count)
+			}
+		}
+		return result
+	}
+
+	g := func(list []keyAndValue) []int {
+		table := make([]int, keymax)
+		for _, kv := range list {
+			key := kv.Key
+			if key < 0 {
+				key ^= -1
+			}
+			key %= keymax
+			table[key]++
+		}
+		result := []int{}
+		for lower := 0; lower < keymax; lower++ {
+			for upper := lower; upper < keymax; upper++ {
+				count := 0
+				for key := lower; key <= upper; key++ {
+					count += table[key]
+				}
+				result = append(result, count)
+			}
 		}
 		return result
 	}
