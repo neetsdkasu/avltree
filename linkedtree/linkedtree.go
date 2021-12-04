@@ -18,6 +18,7 @@ type linkedTreeNode struct {
 	leftChild  *linkedTreeNode
 	rightChild *linkedTreeNode
 	height     int
+	parent     *linkedTreeNode
 	nodeCount  int
 	key        Key
 	value      interface{}
@@ -25,7 +26,7 @@ type linkedTreeNode struct {
 
 func NewLinkedTree(allowDuplicateKeys bool) *LinkedTree {
 	return &LinkedTree{
-		nil,
+		nil, // root
 		allowDuplicateKeys,
 	}
 }
@@ -51,14 +52,17 @@ func (tree *LinkedTree) NodeCount() int {
 }
 
 func (tree *LinkedTree) NewNode(leftChild, rightChild Node, height int, key Key, value interface{}) RealNode {
-	return &linkedTreeNode{
+	node := &linkedTreeNode{
 		unwrap(leftChild),
 		unwrap(rightChild),
 		height,
-		1,
+		nil, // parent
+		1,   // nodeCount
 		key,
 		value,
 	}
+	node.resetNodeCount()
+	return node
 }
 
 func (tree *LinkedTree) Root() Node {
@@ -67,6 +71,7 @@ func (tree *LinkedTree) Root() Node {
 
 func (tree *LinkedTree) SetRoot(newRoot RealNode) Tree {
 	tree.root = unwrap(newRoot)
+	tree.root.SetParent(nil)
 	return tree
 }
 
@@ -102,8 +107,23 @@ func (node *linkedTreeNode) RightChild() Node {
 	return node.rightChild.toNode()
 }
 
+func (node *linkedTreeNode) Parent() Node {
+	if node == nil {
+		return nil
+	} else {
+		return node.parent.toNode()
+	}
+}
+
 func (node *linkedTreeNode) SetValue(newValue interface{}) Node {
 	node.value = newValue
+	return node
+}
+
+func (node *linkedTreeNode) SetParent(newParent Node) RealNode {
+	if node != nil {
+		node.parent = unwrap(newParent)
+	}
 	return node
 }
 
@@ -113,6 +133,7 @@ func (node *linkedTreeNode) resetNodeCount() {
 
 func (node *linkedTreeNode) SetLeftChild(newLeftChild Node, newHeight int) RealNode {
 	node.leftChild = unwrap(newLeftChild)
+	node.leftChild.SetParent(node)
 	node.height = newHeight
 	node.resetNodeCount()
 	return node
@@ -120,6 +141,7 @@ func (node *linkedTreeNode) SetLeftChild(newLeftChild Node, newHeight int) RealN
 
 func (node *linkedTreeNode) SetRightChild(newRightChild Node, newHeight int) RealNode {
 	node.rightChild = unwrap(newRightChild)
+	node.rightChild.SetParent(node)
 	node.height = newHeight
 	node.resetNodeCount()
 	return node
@@ -128,6 +150,8 @@ func (node *linkedTreeNode) SetRightChild(newRightChild Node, newHeight int) Rea
 func (node *linkedTreeNode) SetChildren(newLeftChild, newRightChild Node, newHeight int) RealNode {
 	node.leftChild = unwrap(newLeftChild)
 	node.rightChild = unwrap(newRightChild)
+	node.leftChild.SetParent(node)
+	node.rightChild.SetParent(node)
 	node.height = newHeight
 	node.resetNodeCount()
 	return node

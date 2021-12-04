@@ -4,6 +4,15 @@ type NodeIteratorCallBack = func(node Node) (ok bool)
 
 type NodeCounter interface{ NodeCount() int }
 type NodeDeallocator interface{ ReleaseNode(node RealNode) }
+type ParentGetter interface {
+	Node
+	Parent() Node
+}
+type ParentAccessor interface {
+	RealNode
+	ParentGetter
+	SetParent(newParent Node) RealNode
+}
 
 type Tree interface {
 	NewNode(leftChild, rightChild Node, height int, key Key, value interface{}) RealNode
@@ -38,6 +47,22 @@ const (
 
 type Key interface {
 	CompareTo(other Key) KeyOrdering
+}
+
+type IntKey int
+
+func (key IntKey) CompareTo(other Key) KeyOrdering {
+	v1 := int(key)
+	v2 := int(other.(IntKey))
+	switch {
+	case v1 < v2:
+		return LessThanOtherKey
+	case v1 > v2:
+		return GreaterThanOtherKey
+	default:
+		return EqualToOtherKey
+	}
+	// return v1 - v2 は 算術オーバーフローがこわい
 }
 
 func Insert(tree Tree, replaceIfExists bool, key Key, value interface{}) (modified Tree, ok bool) {
@@ -500,7 +525,7 @@ func rotateLeft(root RealNode) RealNode {
 }
 
 func setChildren(root RealNode, leftChild, rightChild Node) RealNode {
-	newHeight := 1 + getHeight(leftChild) + getHeight(rightChild)
+	newHeight := calcNewHeight(leftChild, rightChild)
 	return root.SetChildren(leftChild, rightChild, newHeight)
 }
 
