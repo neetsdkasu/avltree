@@ -106,19 +106,33 @@ func Delete(tree Tree, key Key) (modified Tree, value interface{}, ok bool) {
 }
 
 func Find(tree Tree, key Key) (node Node, ok bool) {
-	node = tree.Root()
-	for node != nil {
-		cmp := key.CompareTo(node.Key())
-		switch {
-		case cmp.LessThan():
-			node = node.LeftChild()
-		case cmp.GreaterThan():
-			node = node.RightChild()
-		default:
-			return node, true
+	if key != nil {
+		node = tree.Root()
+		for node != nil {
+			cmp := key.CompareTo(node.Key())
+			switch {
+			case cmp.LessThan():
+				node = node.LeftChild()
+			case cmp.GreaterThan():
+				node = node.RightChild()
+			default:
+				return node, true
+			}
 		}
 	}
 	return nil, false
+}
+
+func FindAll(tree Tree, key Key) (nodes []Node, ok bool) {
+	if key != nil {
+		// FindAllを頻繁に呼び出すでもない限りは
+		// Range呼び出しのオーバーヘッドなんて気にするほどのものではないはず
+		Range(tree, false, key, key, func(node Node) bool {
+			nodes = append(nodes, node)
+			return true
+		})
+	}
+	return nodes, 0 < len(nodes)
 }
 
 func Iterate(tree Tree, descOrder bool, callBack NodeIteratorCallBack) (ok bool) {
@@ -144,12 +158,8 @@ func Range(tree Tree, descOrder bool, lower, upper Key, callBack NodeIteratorCal
 func Count(tree Tree) int {
 	if counter, ok := tree.(NodeCounter); ok {
 		return counter.NodeCount()
-	}
-	root := tree.Root()
-	if counter, ok := root.(NodeCounter); ok {
-		return counter.NodeCount()
 	} else {
-		return countNode(root)
+		return countNode(tree.Root())
 	}
 }
 
@@ -192,6 +202,34 @@ func Max(tree Tree) (maximum Node, ok bool) {
 		node = rightChild
 	}
 	return node, true
+}
+
+func MinAll(tree Tree) (minimums []Node, ok bool) {
+	minimum, ok := Min(tree)
+	if !ok {
+		return nil, false
+	}
+	key := minimum.Key()
+	Range(tree, false, key, key, func(node Node) bool {
+		minimums = append(minimums, node)
+		return true
+	})
+	return minimums, true
+}
+
+func MaxAll(tree Tree) (maximums []Node, ok bool) {
+	maximum, ok := Max(tree)
+	if !ok {
+		return nil, false
+	}
+	key := maximum.Key()
+	// 最大側は descOrder にすべきか…？
+	// FindAllに揃えるなら ascOrder だが
+	Range(tree, false, key, key, func(node Node) bool {
+		maximums = append(maximums, node)
+		return true
+	})
+	return maximums, true
 }
 
 func (ordering KeyOrdering) LessThan() bool {
@@ -238,6 +276,9 @@ func countNode(node Node) int {
 	if node == nil {
 		return 0
 	}
+	// countNodeの再帰での呼び出し頻度を考えると
+	// この判定は無駄が多く、コストが高くつく、かも
+	// Treeを構成する一部のNodeにだけNodeCounterが実装されている可能性は低いと思う
 	if counter, ok := node.(NodeCounter); ok {
 		return counter.NodeCount()
 	}
@@ -278,6 +319,7 @@ func countRange(node Node, lower, upper Key) int {
 			// lower == nil, key < upper    ... all(leftChild) key rightChild
 			return countNode(node.LeftChild()) + 1 + countRange(node.RightChild(), lower, upper)
 		default:
+			// ここには到達しないはず
 			panic("unreachable?")
 		}
 	}
@@ -294,6 +336,7 @@ func countRange(node Node, lower, upper Key) int {
 			// upper == nil, key < lower    ... rightChild
 			return countRange(node.RightChild(), lower, upper)
 		default:
+			// ここには到達しないはず
 			panic("unreachable?")
 		}
 	}
@@ -320,6 +363,7 @@ func countRange(node Node, lower, upper Key) int {
 		// lower == key == upper    ... key
 		return 1
 	}
+	// 条件漏れが無ければ、ここには到達しないと思う…
 	panic("unreachable?")
 }
 

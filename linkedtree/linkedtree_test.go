@@ -1027,3 +1027,140 @@ func TestDuplicateKeyCountRange(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestFindAll(t *testing.T) {
+
+	const keymax = 4
+
+	f := func(list []keyAndValue) [][]int {
+		tree := NewLinkedTree(true)
+		for _, kv := range list {
+			key := kv.Key
+			if key < 0 {
+				key ^= -1
+			}
+			avltree.Insert(tree, false, IntKey(key%keymax), kv.Value)
+		}
+		result := [][]int{}
+		for key := 0; key < keymax; key++ {
+			values := []int(nil)
+			if nodes, ok := avltree.FindAll(tree, IntKey(key)); ok {
+				for _, node := range nodes {
+					values = append(values, node.Value().(int))
+				}
+			}
+			result = append(result, values)
+		}
+		return result
+	}
+
+	g := func(list []keyAndValue) [][]int {
+		result := make([][]int, keymax)
+		for _, kv := range list {
+			key := kv.Key
+			if key < 0 {
+				key ^= -1
+			}
+			key %= keymax
+			result[key] = append(result[key], kv.Value)
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMinAll(t *testing.T) {
+
+	const keymax = 4
+
+	f := func(list []keyAndValue) []int {
+		tree := NewLinkedTree(true)
+		for _, kv := range list {
+			key := kv.Key
+			if key < 0 {
+				key ^= -1
+			}
+			avltree.Insert(tree, false, IntKey(key%keymax), kv.Value)
+		}
+		result := []int(nil)
+		if nodes, ok := avltree.MinAll(tree); ok {
+			for _, node := range nodes {
+				result = append(result, node.Value().(int))
+			}
+		}
+		return result
+	}
+
+	g := func(list []keyAndValue) []int {
+		table := make([][]int, keymax)
+		for _, kv := range list {
+			key := kv.Key
+			if key < 0 {
+				key ^= -1
+			}
+			key %= keymax
+			table[key] = append(table[key], kv.Value)
+		}
+		result := []int(nil)
+		for _, values := range table {
+			if len(values) > 0 {
+				result = values
+				break
+			}
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMaxAll(t *testing.T) {
+
+	const keymax = 4
+
+	f := func(list []keyAndValue) []int {
+		tree := NewLinkedTree(true)
+		for _, kv := range list {
+			key := kv.Key
+			if key < 0 {
+				key ^= -1
+			}
+			avltree.Insert(tree, false, IntKey(key%keymax), kv.Value)
+		}
+		result := []int(nil)
+		if nodes, ok := avltree.MaxAll(tree); ok {
+			for _, node := range nodes {
+				result = append(result, node.Value().(int))
+			}
+		}
+		return result
+	}
+
+	g := func(list []keyAndValue) []int {
+		table := make([][]int, keymax)
+		for _, kv := range list {
+			key := kv.Key
+			if key < 0 {
+				key ^= -1
+			}
+			key %= keymax
+			table[key] = append(table[key], kv.Value)
+		}
+		result := []int(nil)
+		for _, values := range table {
+			if len(values) > 0 {
+				result = values
+			}
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
