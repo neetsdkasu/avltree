@@ -234,7 +234,7 @@ func TestNodeCount(t *testing.T) {
 			avltree.Delete(tree, IntKey(list[0].Key))
 		}
 		var invalidNode Node = nil
-		avltree.Iterate(tree, false, func(node Node) bool {
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
 			count := node.(avltree.NodeCounter).NodeCount()
 			var cLeft, cRight int
 			if leftChild, ok := node.LeftChild().(avltree.NodeCounter); ok {
@@ -245,9 +245,10 @@ func TestNodeCount(t *testing.T) {
 			}
 			if count != 1+cLeft+cRight {
 				invalidNode = node
-				return false
+				breakIteration = true
+				return
 			}
-			return true
+			return
 		})
 		return invalidNode
 	}
@@ -272,7 +273,7 @@ func TestHeight(t *testing.T) {
 			avltree.Delete(tree, IntKey(list[0].Key))
 		}
 		var invalidNode Node = nil
-		avltree.Iterate(tree, false, func(node Node) bool {
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
 			height := node.(avltree.RealNode).Height()
 			var hLeft, hRight int
 			if leftChild, ok := node.LeftChild().(avltree.RealNode); ok {
@@ -287,13 +288,15 @@ func TestHeight(t *testing.T) {
 			}
 			if 1 < hMax-hMin {
 				invalidNode = node
-				return false
+				breakIteration = true
+				return
 			}
 			if height-hMax != 1 {
 				invalidNode = node
-				return false
+				breakIteration = true
+				return
 			}
-			return true
+			return
 		})
 		return invalidNode
 	}
@@ -323,31 +326,35 @@ func TestParent(t *testing.T) {
 			}
 		}
 		var invalidNode Node = nil
-		avltree.Iterate(tree, false, func(node Node) bool {
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
 			if parent := node.(avltree.ParentGetter).Parent(); parent != nil {
 				leftChild := parent.LeftChild()
 				rightChild := parent.RightChild()
 				if leftChild != node && rightChild != node {
 					invalidNode = node
-					return false
+					breakIteration = true
+					return
 				}
 			} else if tree.Root() != node {
 				invalidNode = node
-				return false
+				breakIteration = true
+				return
 			}
 			if leftChild, ok := node.LeftChild().(avltree.ParentGetter); ok {
 				if node != leftChild.Parent() {
 					invalidNode = leftChild
-					return false
+					breakIteration = true
+					return
 				}
 			}
 			if rightChild, ok := node.RightChild().(avltree.ParentGetter); ok {
 				if node != rightChild.Parent() {
 					invalidNode = rightChild
-					return false
+					breakIteration = true
+					return
 				}
 			}
-			return true
+			return
 		})
 		return invalidNode
 	}
@@ -519,10 +526,10 @@ func TestInsertAndDelete1(t *testing.T) {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
 		result := []int{}
-		avltree.Iterate(tree, false, func(node avltree.Node) bool {
+		avltree.Iterate(tree, false, func(node avltree.Node) (breakIteration bool) {
 			result = append(result, int(node.Key().(IntKey)))
 			result = append(result, node.Value().(int))
-			return true
+			return
 		})
 		return result
 	}
@@ -563,10 +570,10 @@ func TestInsertAndDelete2(t *testing.T) {
 			avltree.Delete(tree, IntKey(kv.Key))
 		}
 		result := []int{}
-		avltree.Iterate(tree, false, func(node avltree.Node) bool {
+		avltree.Iterate(tree, false, func(node avltree.Node) (breakIteration bool) {
 			result = append(result, int(node.Key().(IntKey)))
 			result = append(result, node.Value().(int))
-			return true
+			return
 		})
 		return result
 	}
@@ -601,10 +608,10 @@ func TestAscSorted(t *testing.T) {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
 		result := []int{}
-		avltree.Iterate(tree, false, func(node avltree.Node) bool {
+		avltree.Iterate(tree, false, func(node avltree.Node) (breakIteration bool) {
 			result = append(result, int(node.Key().(IntKey)))
 			result = append(result, node.Value().(int))
-			return true
+			return
 		})
 		return result
 	}
@@ -636,10 +643,10 @@ func TestDescSorted(t *testing.T) {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
 		result := []int{}
-		avltree.Iterate(tree, true, func(node avltree.Node) bool {
+		avltree.Iterate(tree, true, func(node avltree.Node) (breakIteration bool) {
 			result = append(result, int(node.Key().(IntKey)))
 			result = append(result, node.Value().(int))
-			return true
+			return
 		})
 		return result
 	}
@@ -674,23 +681,16 @@ func TestAscRange(t *testing.T) {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
 		result := []int{}
+		appender := func(node avltree.Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		}
 		lower := IntKey(k1)
 		upper := IntKey(k2)
-		avltree.Range(tree, false, lower, upper, func(node avltree.Node) bool {
-			result = append(result, int(node.Key().(IntKey)))
-			result = append(result, node.Value().(int))
-			return true
-		})
-		avltree.Range(tree, false, nil, lower, func(node avltree.Node) bool {
-			result = append(result, int(node.Key().(IntKey)))
-			result = append(result, node.Value().(int))
-			return true
-		})
-		avltree.Range(tree, false, upper, nil, func(node avltree.Node) bool {
-			result = append(result, int(node.Key().(IntKey)))
-			result = append(result, node.Value().(int))
-			return true
-		})
+		avltree.RangeIterate(tree, false, lower, upper, appender)
+		avltree.RangeIterate(tree, false, nil, lower, appender)
+		avltree.RangeIterate(tree, false, upper, nil, appender)
 		if len(list) > 1 {
 			k1, k2 = list[0].Key, list[1].Key
 			if k2 < k1 {
@@ -698,21 +698,9 @@ func TestAscRange(t *testing.T) {
 			}
 			lower = IntKey(k1)
 			upper = IntKey(k2)
-			avltree.Range(tree, false, lower, upper, func(node avltree.Node) bool {
-				result = append(result, int(node.Key().(IntKey)))
-				result = append(result, node.Value().(int))
-				return true
-			})
-			avltree.Range(tree, false, nil, lower, func(node avltree.Node) bool {
-				result = append(result, int(node.Key().(IntKey)))
-				result = append(result, node.Value().(int))
-				return true
-			})
-			avltree.Range(tree, false, upper, nil, func(node avltree.Node) bool {
-				result = append(result, int(node.Key().(IntKey)))
-				result = append(result, node.Value().(int))
-				return true
-			})
+			avltree.RangeIterate(tree, false, lower, upper, appender)
+			avltree.RangeIterate(tree, false, nil, lower, appender)
+			avltree.RangeIterate(tree, false, upper, nil, appender)
 		}
 		return result
 	}
@@ -794,10 +782,10 @@ func TestDescRange(t *testing.T) {
 		result := []int{}
 		lower := IntKey(k1)
 		upper := IntKey(k2)
-		avltree.Range(tree, true, lower, upper, func(node avltree.Node) bool {
+		avltree.RangeIterate(tree, true, lower, upper, func(node avltree.Node) (breakIteration bool) {
 			result = append(result, int(node.Key().(IntKey)))
 			result = append(result, node.Value().(int))
-			return true
+			return
 		})
 		return result
 	}
@@ -843,9 +831,9 @@ func TestDuplicateKeyAscRange(t *testing.T) {
 		for lower := 0; lower < keymax; lower++ {
 			for upper := lower; upper < keymax; upper++ {
 				values := []int(nil)
-				avltree.Range(tree, false, IntKey(lower), IntKey(upper), func(node Node) bool {
+				avltree.RangeIterate(tree, false, IntKey(lower), IntKey(upper), func(node Node) (breakIteration bool) {
 					values = append(values, node.Value().(int))
-					return true
+					return
 				})
 				result = append(result, values)
 			}
@@ -898,9 +886,9 @@ func TestDuplicateKeyDescRange(t *testing.T) {
 		for lower := 0; lower < keymax; lower++ {
 			for upper := lower; upper < keymax; upper++ {
 				values := []int(nil)
-				avltree.Range(tree, true, IntKey(lower), IntKey(upper), func(node Node) bool {
+				avltree.RangeIterate(tree, true, IntKey(lower), IntKey(upper), func(node Node) (breakIteration bool) {
 					values = append(values, node.Value().(int))
-					return true
+					return
 				})
 				result = append(result, values)
 			}

@@ -2,7 +2,7 @@ package avltree
 
 import "strings"
 
-type NodeIteratorCallBack = func(node Node) (ok bool)
+type NodeIteratorCallBack = func(node Node) (breakIteration bool)
 
 type NodeCounter interface{ NodeCount() int }
 type NodeDeallocator interface{ ReleaseNode(node RealNode) }
@@ -127,9 +127,9 @@ func FindAll(tree Tree, key Key) (nodes []Node, ok bool) {
 	if key != nil {
 		// FindAllを頻繁に呼び出すでもない限りは
 		// Range呼び出しのオーバーヘッドなんて気にするほどのものではないはず
-		Range(tree, false, key, key, func(node Node) bool {
+		RangeIterate(tree, false, key, key, func(node Node) (breakIteration bool) {
 			nodes = append(nodes, node)
-			return true
+			return
 		})
 	}
 	return nodes, 0 < len(nodes)
@@ -143,7 +143,7 @@ func Iterate(tree Tree, descOrder bool, callBack NodeIteratorCallBack) (ok bool)
 	}
 }
 
-func Range(tree Tree, descOrder bool, lower, upper Key, callBack NodeIteratorCallBack) (ok bool) {
+func RangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack NodeIteratorCallBack) (ok bool) {
 	if lower == nil && upper == nil {
 		return Iterate(tree, descOrder, callBack)
 	}
@@ -210,9 +210,9 @@ func MinAll(tree Tree) (minimums []Node, ok bool) {
 		return nil, false
 	}
 	key := minimum.Key()
-	Range(tree, false, key, key, func(node Node) bool {
+	RangeIterate(tree, false, key, key, func(node Node) (breakIteration bool) {
 		minimums = append(minimums, node)
-		return true
+		return
 	})
 	return minimums, true
 }
@@ -225,9 +225,9 @@ func MaxAll(tree Tree) (maximums []Node, ok bool) {
 	key := maximum.Key()
 	// 最大側は descOrder にすべきか…？
 	// FindAllに揃えるなら ascOrder だが
-	Range(tree, false, key, key, func(node Node) bool {
+	RangeIterate(tree, false, key, key, func(node Node) (breakIteration bool) {
 		maximums = append(maximums, node)
-		return true
+		return
 	})
 	return maximums, true
 }
@@ -704,7 +704,7 @@ func ascIterateNode(node Node, callBack NodeIteratorCallBack) (ok bool) {
 	if !ascIterateNode(node.LeftChild(), callBack) {
 		return false
 	}
-	if !callBack(node) {
+	if callBack(node) {
 		return false
 	}
 	return ascIterateNode(node.RightChild(), callBack)
@@ -717,7 +717,7 @@ func descIterateNode(node Node, callBack NodeIteratorCallBack) (ok bool) {
 	if !descIterateNode(node.RightChild(), callBack) {
 		return false
 	}
-	if !callBack(node) {
+	if callBack(node) {
 		return false
 	}
 	return descIterateNode(node.LeftChild(), callBack)
@@ -836,7 +836,7 @@ func ascRangeNode(node Node, bounds keyBounds, callBack NodeIteratorCallBack) (o
 	}
 	upper := bounds.checkUpper(key)
 	if lower.includeKey() && upper.includeKey() {
-		if !callBack(node) {
+		if callBack(node) {
 			return false
 		}
 	}
@@ -860,7 +860,7 @@ func descRangeNode(node Node, bounds keyBounds, callBack NodeIteratorCallBack) (
 	}
 	lower := bounds.checkLower(key)
 	if lower.includeKey() && upper.includeKey() {
-		if !callBack(node) {
+		if callBack(node) {
 			return false
 		}
 	}
