@@ -1410,3 +1410,45 @@ func TestMaxAll(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestUpdateValue(t *testing.T) {
+
+	f := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		for _, kv := range list {
+			avltree.Update(tree, IntKey(kv.Key), func(oldValue interface{}) (newValue interface{}, keepOldValue bool) {
+				value := oldValue.(int)
+				newValue = value >> 1
+				return
+			})
+		}
+		result := []int{}
+		avltree.Iterate(tree, false, func(node avltree.Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		return result
+	}
+
+	g := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		result := []int{}
+		for _, kv := range list {
+			result = append(result, kv.Key)
+			result = append(result, kv.Value>>1)
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}

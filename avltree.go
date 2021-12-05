@@ -3,6 +3,7 @@ package avltree
 import "strings"
 
 type NodeIteratorCallBack = func(node Node) (breakIteration bool)
+type ValueUpdater = func(oldValue interface{}) (newValue interface{}, keepOldValue bool)
 
 type NodeCounter interface{ NodeCount() int }
 type NodeDeallocator interface{ ReleaseNode(node RealNode) }
@@ -102,6 +103,14 @@ func Delete(tree Tree, key Key) (modified Tree, value interface{}, ok bool) {
 		}
 	} else {
 		return tree, nil, false
+	}
+}
+
+func Update(tree Tree, key Key, callBack ValueUpdater) (modified Tree, ok bool) {
+	if newRoot, ok := updateValue(tree.Root(), key, callBack); ok {
+		return tree.SetRoot(newRoot), true
+	} else {
+		return tree, false
 	}
 }
 
@@ -712,7 +721,7 @@ func ascIterateNode(node Node, callBack NodeIteratorCallBack) (ok bool) {
 	if !ascIterateNode(node.LeftChild(), callBack) {
 		return false
 	}
-	if callBack(node) {
+	if breakIteration := callBack(node); breakIteration {
 		return false
 	}
 	return ascIterateNode(node.RightChild(), callBack)
@@ -725,7 +734,7 @@ func descIterateNode(node Node, callBack NodeIteratorCallBack) (ok bool) {
 	if !descIterateNode(node.RightChild(), callBack) {
 		return false
 	}
-	if callBack(node) {
+	if breakIteration := callBack(node); breakIteration {
 		return false
 	}
 	return descIterateNode(node.LeftChild(), callBack)
@@ -844,7 +853,7 @@ func ascRangeNode(node Node, bounds keyBounds, callBack NodeIteratorCallBack) (o
 	}
 	upper := bounds.checkUpper(key)
 	if lower.includeKey() && upper.includeKey() {
-		if callBack(node) {
+		if breakIteration := callBack(node); breakIteration {
 			return false
 		}
 	}
@@ -868,7 +877,7 @@ func descRangeNode(node Node, bounds keyBounds, callBack NodeIteratorCallBack) (
 	}
 	lower := bounds.checkLower(key)
 	if lower.includeKey() && upper.includeKey() {
-		if callBack(node) {
+		if breakIteration := callBack(node); breakIteration {
 			return false
 		}
 	}
@@ -876,5 +885,34 @@ func descRangeNode(node Node, bounds keyBounds, callBack NodeIteratorCallBack) (
 		return descRangeNode(node.LeftChild(), bounds, callBack)
 	} else {
 		return true
+	}
+}
+
+func updateValue(node Node, key Key, callBack ValueUpdater) (newNode RealNode, ok bool) {
+	if node == nil {
+		return nil, false
+	}
+	cmp := key.CompareTo(node.Key())
+	switch {
+	case cmp.LessThan():
+		if leftChild, ok := updateValue(node.LeftChild(), key, callBack); ok {
+			return setLeftChild(node.(RealNode), leftChild), true
+		} else {
+			return nil, false
+		}
+	case cmp.EqualTo():
+		if newValue, keepOldValue := callBack(node.Value()); !keepOldValue {
+			return node.SetValue(newValue).(RealNode), true
+		} else {
+			return nil, false
+		}
+	case cmp.GreaterThan():
+		if rightChild, ok := updateValue(node.RightChild(), key, callBack); ok {
+			return setRightChild(node.(RealNode), rightChild), true
+		} else {
+			return nil, false
+		}
+	default:
+		panic("unreachable")
 	}
 }
