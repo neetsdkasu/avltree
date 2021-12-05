@@ -114,6 +114,12 @@ func Update(tree Tree, key Key, callBack ValueUpdater) (modified Tree, ok bool) 
 	}
 }
 
+func Replace(tree Tree, key Key, newValue interface{}) (modified Tree, ok bool) {
+	return Update(tree, key, func(oldValue interface{}) (interface{}, bool) {
+		return newValue, false
+	})
+}
+
 func Find(tree Tree, key Key) (node Node, ok bool) {
 	if key != nil {
 		node = tree.Root()
@@ -130,18 +136,6 @@ func Find(tree Tree, key Key) (node Node, ok bool) {
 		}
 	}
 	return nil, false
-}
-
-func FindAll(tree Tree, key Key) (nodes []Node, ok bool) {
-	if key != nil {
-		// FindAllを頻繁に呼び出すでもない限りは
-		// Range呼び出しのオーバーヘッドなんて気にするほどのものではないはず
-		RangeIterate(tree, false, key, key, func(node Node) (breakIteration bool) {
-			nodes = append(nodes, node)
-			return
-		})
-	}
-	return nodes, 0 < len(nodes)
 }
 
 func Iterate(tree Tree, descOrder bool, callBack NodeIteratorCallBack) (ok bool) {
@@ -219,6 +213,30 @@ func Max(tree Tree) (maximum Node, ok bool) {
 		node = rightChild
 	}
 	return node, true
+}
+
+func DeleteAll(tree Tree, key Key) (modified Tree, values []interface{}, ok bool) {
+	// ひとまず雑実装
+	for {
+		var value interface{}
+		tree, value, ok = Delete(tree, key)
+		if !ok {
+			return tree, values, 0 < len(values)
+		}
+		values = append(values, value)
+	}
+}
+
+func FindAll(tree Tree, key Key) (nodes []Node, ok bool) {
+	if key != nil {
+		// FindAllを頻繁に呼び出すでもない限りは
+		// Range呼び出しのオーバーヘッドなんて気にするほどのものではないはず
+		RangeIterate(tree, false, key, key, func(node Node) (breakIteration bool) {
+			nodes = append(nodes, node)
+			return
+		})
+	}
+	return nodes, 0 < len(nodes)
 }
 
 func MinAll(tree Tree) (minimums []Node, ok bool) {

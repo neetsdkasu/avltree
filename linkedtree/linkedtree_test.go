@@ -1274,6 +1274,53 @@ func TestDuplicateKeyCountRange(t *testing.T) {
 	}
 }
 
+func TestDeleteAll(t *testing.T) {
+
+	const keymax = 4
+
+	f := func(list []keyAndValue, delkey int) [][]int {
+		tree := NewLinkedTree(true)
+		for _, kv := range list {
+			key := kv.Key
+			if key < 0 {
+				key ^= -1
+			}
+			avltree.Insert(tree, false, IntKey(key%keymax), kv.Value)
+		}
+		if delkey < 0 {
+			delkey ^= -1
+		}
+		avltree.DeleteAll(tree, IntKey(delkey%keymax))
+		result := make([][]int, keymax)
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			key := int(node.Key().(IntKey))
+			result[key] = append(result[key], node.Value().(int))
+			return
+		})
+		return result
+	}
+
+	g := func(list []keyAndValue, delkey int) [][]int {
+		result := make([][]int, keymax)
+		for _, kv := range list {
+			key := kv.Key
+			if key < 0 {
+				key ^= -1
+			}
+			key %= keymax
+			result[key] = append(result[key], kv.Value)
+		}
+		if delkey < 0 {
+			delkey ^= -1
+		}
+		result[delkey%keymax] = []int(nil)
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
 func TestFindAll(t *testing.T) {
 
 	const keymax = 4
@@ -1526,6 +1573,46 @@ func TestUpdateValue(t *testing.T) {
 		for _, kv := range list {
 			result = append(result, kv.Key)
 			result = append(result, kv.Value>>1)
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestReplaceValue(t *testing.T) {
+
+	const value int = 123456
+
+	f := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		for _, kv := range list {
+			avltree.Replace(tree, IntKey(kv.Key), kv.Value^value)
+		}
+		result := []int{}
+		avltree.Iterate(tree, false, func(node avltree.Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		return result
+	}
+
+	g := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		result := []int{}
+		for _, kv := range list {
+			result = append(result, kv.Key)
+			result = append(result, kv.Value^value)
 		}
 		return result
 	}
