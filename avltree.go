@@ -143,6 +143,14 @@ func Iterate(tree Tree, descOrder bool, callBack NodeIteratorCallBack) (ok bool)
 	}
 }
 
+func Range(tree Tree, descOrder bool, lower, upper Key) (nodes []Node) {
+	RangeIterate(tree, descOrder, lower, upper, func(node Node) (breakIteration bool) {
+		nodes = append(nodes, node)
+		return
+	})
+	return
+}
+
 func RangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack NodeIteratorCallBack) (ok bool) {
 	if lower == nil && upper == nil {
 		return Iterate(tree, descOrder, callBack)
