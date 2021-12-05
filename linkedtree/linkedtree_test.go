@@ -1411,6 +1411,88 @@ func TestMaxAll(t *testing.T) {
 	}
 }
 
+func TestUpdateValueByFind(t *testing.T) {
+
+	f := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		for _, kv := range list {
+			node, _ := avltree.Find(tree, IntKey(kv.Key))
+			value := node.Value().(int)
+			newValue := value >> 1
+			node.SetValue(newValue)
+		}
+		result := []int{}
+		avltree.Iterate(tree, false, func(node avltree.Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		return result
+	}
+
+	g := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		result := []int{}
+		for _, kv := range list {
+			result = append(result, kv.Key)
+			result = append(result, kv.Value>>1)
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestUpdateValueByIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		avltree.Iterate(tree, true, func(node avltree.Node) (breakIteration bool) {
+			value := node.Value().(int)
+			newValue := value >> 1
+			node.SetValue(newValue)
+			return
+		})
+		result := []int{}
+		avltree.Iterate(tree, false, func(node avltree.Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		return result
+	}
+
+	g := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		result := []int{}
+		for _, kv := range list {
+			result = append(result, kv.Key)
+			result = append(result, kv.Value>>1)
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestUpdateValue(t *testing.T) {
 
 	f := func(listBase []keyAndValue) []int {
