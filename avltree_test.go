@@ -10,12 +10,11 @@ type assertion testing.T
 
 func (a *assertion) Assert(expectTrue bool, args ...interface{}) {
 	if !expectTrue {
+		msg := []interface{}{"Fail Assert:"}
 		if _, file, line, ok := runtime.Caller(1); ok {
-			args = append([]interface{}{
-				"Fail Assert:", "[", file, line, "]",
-			}, args...)
+			msg = append(msg, "[", file, line, "]")
 		}
-		a.Fatal(args...)
+		a.Fatal(append(msg, args...)...)
 	}
 }
 
