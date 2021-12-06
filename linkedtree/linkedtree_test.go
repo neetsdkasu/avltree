@@ -1687,7 +1687,7 @@ func TestUpdateValue(t *testing.T) {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
 		for _, kv := range list {
-			avltree.Update(tree, IntKey(kv.Key), func(oldValue interface{}) (newValue interface{}, keepOldValue bool) {
+			avltree.Update(tree, IntKey(kv.Key), func(key avltree.Key, oldValue interface{}) (newValue interface{}, keepOldValue bool) {
 				value := oldValue.(int)
 				newValue = value >> 1
 				return
@@ -1729,7 +1729,7 @@ func TestKeepOldValue(t *testing.T) {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
 		for _, kv := range list {
-			avltree.Update(tree, IntKey(kv.Key), func(oldValue interface{}) (newValue interface{}, keepOldValue bool) {
+			avltree.Update(tree, IntKey(kv.Key), func(key avltree.Key, oldValue interface{}) (newValue interface{}, keepOldValue bool) {
 				value := oldValue.(int)
 				newValue = value >> 1
 				keepOldValue = true

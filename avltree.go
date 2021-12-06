@@ -3,7 +3,7 @@ package avltree
 import "strings"
 
 type NodeIteratorCallBack = func(node Node) (breakIteration bool)
-type ValueUpdater = func(oldValue interface{}) (newValue interface{}, keepOldValue bool)
+type ValueUpdaterCallBack = func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue bool)
 type UpdateIteratorCallBack = func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool)
 
 type NodeCounter interface{ NodeCount() int }
@@ -107,7 +107,7 @@ func Delete(tree Tree, key Key) (modified Tree, value interface{}, ok bool) {
 	}
 }
 
-func Update(tree Tree, key Key, callBack ValueUpdater) (modified Tree, ok bool) {
+func Update(tree Tree, key Key, callBack ValueUpdaterCallBack) (modified Tree, ok bool) {
 	if newRoot, ok := updateValue(tree.Root(), key, callBack); ok {
 		return tree.(RealTree).SetRoot(newRoot), true
 	} else {
@@ -116,7 +116,7 @@ func Update(tree Tree, key Key, callBack ValueUpdater) (modified Tree, ok bool) 
 }
 
 func Replace(tree Tree, key Key, newValue interface{}) (modified Tree, ok bool) {
-	return Update(tree, key, func(oldValue interface{}) (interface{}, bool) {
+	return Update(tree, key, func(key Key, oldValue interface{}) (interface{}, bool) {
 		return newValue, false
 	})
 }
@@ -226,6 +226,27 @@ func DeleteAll(tree Tree, key Key) (modified Tree, values []interface{}, ok bool
 	}
 }
 
+func UpdateAll(tree Tree, key Key, callBack ValueUpdaterCallBack) (modified Tree, ok bool) {
+	if key != nil {
+		return UpdateRangeIterate(tree, false, key, key, func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool) {
+			newValue, keepOldValue = callBack(key, oldValue)
+			return
+		})
+	} else {
+		return tree, false
+	}
+}
+
+func ReplaceAll(tree Tree, key Key, newValue interface{}) (modified Tree, ok bool) {
+	if key != nil {
+		return UpdateRangeIterate(tree, false, key, key, func(key Key, oldValue interface{}) (interface{}, bool, bool) {
+			return newValue, false, false
+		})
+	} else {
+		return tree, false
+	}
+}
+
 func FindAll(tree Tree, key Key) (nodes []Node, ok bool) {
 	if key != nil {
 		// FindAllを頻繁に呼び出すでもない限りは
@@ -280,6 +301,39 @@ func UpdateIterate(tree Tree, descOrder bool, callBack UpdateIteratorCallBack) (
 			return tree, false
 		}
 	}
+}
+
+func UpdateRange(tree Tree, descOrder bool, lower, upper Key, callBack ValueUpdaterCallBack) (modified Tree, ok bool) {
+	return UpdateRangeIterate(tree, descOrder, lower, upper, func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool) {
+		newValue, keepOldValue = callBack(key, oldValue)
+		return
+	})
+}
+
+func UpdateRangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack UpdateIteratorCallBack) (modified Tree, ok bool) {
+	if lower == nil && upper == nil {
+		return UpdateIterate(tree, descOrder, callBack)
+	}
+	bounds := newKeyBounds(lower, upper, tree.(RealTree).AllowDuplicateKeys())
+	if descOrder {
+		if newRoot, updated, _ := descUpdateRange(tree.Root(), bounds, callBack); updated {
+			return tree.(RealTree).SetRoot(newRoot), true
+		} else {
+			return tree, false
+		}
+	} else {
+		if newRoot, updated, _ := ascUpdateRange(tree.Root(), bounds, callBack); updated {
+			return tree.(RealTree).SetRoot(newRoot), true
+		} else {
+			return tree, false
+		}
+	}
+}
+
+func ReplaceRange(tree Tree, lower, upper Key, newValue interface{}) (modified Tree, ok bool) {
+	return UpdateRangeIterate(tree, false, lower, upper, func(key Key, oldValue interface{}) (interface{}, bool, bool) {
+		return newValue, false, false
+	})
 }
 
 func (ordering KeyOrdering) LessThan() bool {
@@ -933,11 +987,12 @@ func descRangeNode(node Node, bounds keyBounds, callBack NodeIteratorCallBack) (
 	}
 }
 
-func updateValue(node Node, key Key, callBack ValueUpdater) (newNode RealNode, ok bool) {
+func updateValue(node Node, key Key, callBack ValueUpdaterCallBack) (newNode RealNode, ok bool) {
 	if node == nil {
 		return nil, false
 	}
-	cmp := key.CompareTo(node.Key())
+	nodeKey := node.Key()
+	cmp := key.CompareTo(nodeKey)
 	switch {
 	case cmp.LessThan():
 		if leftChild, ok := updateValue(node.LeftChild(), key, callBack); ok {
@@ -946,7 +1001,7 @@ func updateValue(node Node, key Key, callBack ValueUpdater) (newNode RealNode, o
 			return nil, false
 		}
 	case cmp.EqualTo():
-		if newValue, keepOldValue := callBack(node.Value()); !keepOldValue {
+		if newValue, keepOldValue := callBack(nodeKey, node.Value()); !keepOldValue {
 			return node.SetValue(newValue).(RealNode), true
 		} else {
 			return nil, false
@@ -1036,12 +1091,140 @@ func descUpdateIterate(root Node, callBack UpdateIteratorCallBack) (newRoot Real
 			newRoot = setRightChild(root.(RealNode), rightChild)
 		case rightUpdated && !keepOldValue:
 			newRoot = resetNode(root.(RealNode), root.LeftChild(), rightChild, newValue)
+		default:
+			panic("unreachable")
 		}
 		updated = rightUpdated || !keepOldValue
 		return newRoot, updated, breakIteration
 	}
 
 	leftChild, leftUpdated, breakIteration := descUpdateIterate(root.LeftChild(), callBack)
+	switch {
+	case !leftUpdated && keepOldValue && !rightUpdated:
+		newRoot = root.(RealNode)
+	case !leftUpdated && !keepOldValue && !rightUpdated:
+		newRoot = root.SetValue(newValue).(RealNode)
+	case keepOldValue:
+		newRoot = setChildren(root.(RealNode), leftChild, rightChild)
+	case !keepOldValue:
+		newRoot = resetNode(root.(RealNode), leftChild, rightChild, newValue)
+	default:
+		panic("unreachable")
+	}
+	updated = leftUpdated || !keepOldValue || rightUpdated
+	return newRoot, updated, breakIteration
+}
+
+func ascUpdateRange(root Node, bounds keyBounds, callBack UpdateIteratorCallBack) (newRoot RealNode, updated, breakIteration bool) {
+	if root == nil {
+		return nil, false, false
+	}
+	var leftUpdated, keepOldValue, rightUpdated bool
+	leftChild := root.LeftChild()
+	rightChild := root.RightChild()
+	key := root.Key()
+
+	lower := bounds.checkLower(key)
+	if lower.includeLower() {
+		leftChild, leftUpdated, breakIteration = ascUpdateRange(leftChild, bounds, callBack)
+		if breakIteration {
+			if leftUpdated {
+				newRoot = setLeftChild(root.(RealNode), leftChild)
+			} else {
+				newRoot = root.(RealNode)
+			}
+			return newRoot, leftUpdated, breakIteration
+		}
+	}
+
+	var newValue interface{}
+	upper := bounds.checkUpper(key)
+	if lower.includeKey() && upper.includeKey() {
+		newValue, keepOldValue, breakIteration = callBack(root.Key(), root.Value())
+		if breakIteration {
+			switch {
+			case !leftUpdated && keepOldValue:
+				newRoot = root.(RealNode)
+			case !leftUpdated && !keepOldValue:
+				newRoot = root.SetValue(newValue).(RealNode)
+			case leftUpdated && keepOldValue:
+				newRoot = setLeftChild(root.(RealNode), leftChild)
+			case leftUpdated && !keepOldValue:
+				newRoot = resetNode(root.(RealNode), leftChild, rightChild, newValue)
+			default:
+				panic("unreachable")
+			}
+			updated = leftUpdated || !keepOldValue
+			return newRoot, updated, breakIteration
+		}
+	}
+
+	if upper.includeUpper() {
+		rightChild, rightUpdated, breakIteration = ascUpdateRange(rightChild, bounds, callBack)
+	}
+	switch {
+	case !leftUpdated && keepOldValue && !rightUpdated:
+		newRoot = root.(RealNode)
+	case !leftUpdated && !keepOldValue && !rightUpdated:
+		newRoot = root.SetValue(newValue).(RealNode)
+	case keepOldValue:
+		newRoot = setChildren(root.(RealNode), leftChild, rightChild)
+	case !keepOldValue:
+		newRoot = resetNode(root.(RealNode), leftChild, rightChild, newValue)
+	default:
+		panic("unreachable")
+	}
+	updated = leftUpdated || !keepOldValue || rightUpdated
+	return newRoot, updated, breakIteration
+}
+
+func descUpdateRange(root Node, bounds keyBounds, callBack UpdateIteratorCallBack) (newRoot RealNode, updated, breakIteration bool) {
+	if root == nil {
+		return nil, false, false
+	}
+	var leftUpdated, keepOldValue, rightUpdated bool
+	leftChild := root.LeftChild()
+	rightChild := root.RightChild()
+	key := root.Key()
+
+	upper := bounds.checkUpper(key)
+	if upper.includeUpper() {
+		rightChild, rightUpdated, breakIteration = descUpdateRange(rightChild, bounds, callBack)
+		if breakIteration {
+			if rightUpdated {
+				newRoot = setRightChild(root.(RealNode), rightChild)
+			} else {
+				newRoot = root.(RealNode)
+			}
+			return newRoot, rightUpdated, breakIteration
+		}
+	}
+
+	var newValue interface{}
+	lower := bounds.checkLower(key)
+	if lower.includeKey() && upper.includeKey() {
+		newValue, keepOldValue, breakIteration = callBack(root.Key(), root.Value())
+		if breakIteration {
+			switch {
+			case !rightUpdated && keepOldValue:
+				newRoot = root.(RealNode)
+			case !rightUpdated && !keepOldValue:
+				newRoot = root.SetValue(newValue).(RealNode)
+			case rightUpdated && keepOldValue:
+				newRoot = setRightChild(root.(RealNode), rightChild)
+			case rightUpdated && !keepOldValue:
+				newRoot = resetNode(root.(RealNode), root.LeftChild(), rightChild, newValue)
+			default:
+				panic("unreachable")
+			}
+			updated = rightUpdated || !keepOldValue
+			return newRoot, updated, breakIteration
+		}
+
+	}
+	if lower.includeLower() {
+		leftChild, leftUpdated, breakIteration = descUpdateRange(leftChild, bounds, callBack)
+	}
 	switch {
 	case !leftUpdated && keepOldValue && !rightUpdated:
 		newRoot = root.(RealNode)
