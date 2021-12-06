@@ -2429,6 +2429,9 @@ func TestUpdateAll(t *testing.T) {
 		}
 		updList := result[updkey%keymax]
 		for i := range updList {
+			// count++
+			// keepOldValue = count%2 == 0
+			// なので(i+1)%2==0がキープされる、つまりi%2==1
 			if i%2 == 0 {
 				updList[i] ^= updkey
 			}
