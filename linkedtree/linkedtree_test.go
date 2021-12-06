@@ -1992,3 +1992,234 @@ func TestDescHalfUpdateIterate(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestAscUpdateRangeIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		lower := IntKey(k1)
+		upper := IntKey(k2)
+		avltree.UpdateRangeIterate(tree, false, lower, upper, func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool) {
+			value := oldValue.(int)
+			newValue = value >> 1
+			keepOldValue = value < 0
+			return
+		})
+		result := []int{}
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		return result
+	}
+
+	g := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		result := []int{}
+		for _, kv := range list {
+			result = append(result, kv.Key)
+			if kv.Key < k1 || k2 < kv.Key || kv.Value < 0 {
+				result = append(result, kv.Value)
+			} else {
+				result = append(result, kv.Value>>1)
+			}
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAscHalfUpdateRangeIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		count := (len(list) + 1) / 2
+		lower := IntKey(k1)
+		upper := IntKey(k2)
+		avltree.UpdateRangeIterate(tree, false, lower, upper, func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool) {
+			value := oldValue.(int)
+			newValue = value >> 1
+			keepOldValue = value < 0
+			count--
+			breakIteration = count <= 0
+			return
+		})
+		result := []int{}
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		return result
+	}
+
+	g := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		count := (len(list) + 1) / 2
+		result := []int{}
+		for _, kv := range list {
+			result = append(result, kv.Key)
+			if kv.Key < k1 || k2 < kv.Key || kv.Value < 0 || count <= 0 {
+				result = append(result, kv.Value)
+			} else {
+				result = append(result, kv.Value>>1)
+			}
+			if k1 <= kv.Key && kv.Key <= k2 {
+				count--
+			}
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDescUpdateRangeIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		lower := IntKey(k1)
+		upper := IntKey(k2)
+		avltree.UpdateRangeIterate(tree, true, lower, upper, func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool) {
+			value := oldValue.(int)
+			newValue = value >> 1
+			keepOldValue = value < 0
+			return
+		})
+		result := []int{}
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		return result
+	}
+
+	g := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		result := []int{}
+		for _, kv := range list {
+			result = append(result, kv.Key)
+			if kv.Key < k1 || k2 < kv.Key || kv.Value < 0 {
+				result = append(result, kv.Value)
+			} else {
+				result = append(result, kv.Value>>1)
+			}
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDescHalfUpdateRangeIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		count := (len(list) + 1) / 2
+		lower := IntKey(k1)
+		upper := IntKey(k2)
+		avltree.UpdateRangeIterate(tree, true, lower, upper, func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool) {
+			value := oldValue.(int)
+			newValue = value >> 1
+			keepOldValue = value < 0
+			count--
+			breakIteration = count <= 0
+			return
+		})
+		result := []int{}
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		return result
+	}
+
+	g := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		count := -(len(list) + 1) / 2
+		for _, kv := range list {
+			if k1 <= kv.Key && kv.Key <= k2 {
+				count++
+			}
+		}
+		result := []int{}
+		for _, kv := range list {
+			result = append(result, kv.Key)
+			if kv.Key < k1 || k2 < kv.Key || kv.Value < 0 || count > 0 {
+				result = append(result, kv.Value)
+			} else {
+				result = append(result, kv.Value>>1)
+			}
+			if k1 <= kv.Key && kv.Key <= k2 {
+				count--
+			}
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
