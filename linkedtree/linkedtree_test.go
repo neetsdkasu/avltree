@@ -1459,6 +1459,7 @@ func TestDeleteAll(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
 func TestFindAll(t *testing.T) {
 
 	const keymax = 4
@@ -2371,6 +2372,118 @@ func TestReplaceRange(t *testing.T) {
 			} else {
 				result = append(result, value)
 			}
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestUpdateAll(t *testing.T) {
+
+	const keymax = 4
+
+	f := func(list []keyAndValue, updkey int) [][]int {
+		tree := NewLinkedTree(true)
+		for _, kv := range list {
+			key := kv.Key
+			if key < 0 {
+				key ^= -1
+			}
+			avltree.Insert(tree, false, IntKey(key%keymax), kv.Value)
+		}
+		if updkey < 0 {
+			updkey ^= -1
+		}
+		count := 0
+		avltree.UpdateAll(tree, IntKey(updkey%keymax), func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue bool) {
+			value := oldValue.(int)
+			newValue = value ^ updkey
+			count++
+			keepOldValue = count%2 == 0
+			return
+		})
+		result := make([][]int, keymax)
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			key := int(node.Key().(IntKey))
+			result[key] = append(result[key], node.Value().(int))
+			return
+		})
+		return result
+	}
+
+	g := func(list []keyAndValue, updkey int) [][]int {
+		result := make([][]int, keymax)
+		for _, kv := range list {
+			key := kv.Key
+			if key < 0 {
+				key ^= -1
+			}
+			key %= keymax
+			result[key] = append(result[key], kv.Value)
+		}
+		if updkey < 0 {
+			updkey ^= -1
+		}
+		updList := result[updkey%keymax]
+		for i := range updList {
+			if i%2 == 0 {
+				updList[i] ^= updkey
+			}
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestReplaceAll(t *testing.T) {
+
+	const keymax = 4
+	const value int = 123456
+
+	f := func(list []keyAndValue, updkey int) [][]int {
+		tree := NewLinkedTree(true)
+		for _, kv := range list {
+			key := kv.Key
+			if key < 0 {
+				key ^= -1
+			}
+			avltree.Insert(tree, false, IntKey(key%keymax), kv.Value)
+		}
+		if updkey < 0 {
+			updkey ^= -1
+		}
+		avltree.ReplaceAll(tree, IntKey(updkey%keymax), value)
+		result := make([][]int, keymax)
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			key := int(node.Key().(IntKey))
+			result[key] = append(result[key], node.Value().(int))
+			return
+		})
+		return result
+	}
+
+	g := func(list []keyAndValue, updkey int) [][]int {
+		result := make([][]int, keymax)
+		for _, kv := range list {
+			key := kv.Key
+			if key < 0 {
+				key ^= -1
+			}
+			key %= keymax
+			result[key] = append(result[key], kv.Value)
+		}
+		if updkey < 0 {
+			updkey ^= -1
+		}
+		updList := result[updkey%keymax]
+		for i := range updList {
+			updList[i] = value
 		}
 		return result
 	}
