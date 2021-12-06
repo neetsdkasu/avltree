@@ -1157,6 +1157,8 @@ func ascUpdateRange(root Node, bounds keyBounds, callBack UpdateIteratorCallBack
 			updated = leftUpdated || !keepOldValue
 			return newRoot, updated, breakIteration
 		}
+	} else {
+		keepOldValue = true
 	}
 
 	if upper.includeUpper() {
@@ -1220,8 +1222,10 @@ func descUpdateRange(root Node, bounds keyBounds, callBack UpdateIteratorCallBac
 			updated = rightUpdated || !keepOldValue
 			return newRoot, updated, breakIteration
 		}
-
+	} else {
+		keepOldValue = true
 	}
+
 	if lower.includeLower() {
 		leftChild, leftUpdated, breakIteration = descUpdateRange(leftChild, bounds, callBack)
 	}
