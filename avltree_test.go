@@ -8,9 +8,19 @@ import (
 
 type assertion testing.T
 
-func (a *assertion) Assert(expectTrue bool, args ...interface{}) {
+func (a *assertion) IsTrue(expectTrue bool, args ...interface{}) {
 	if !expectTrue {
-		msg := []interface{}{"Fail Assert:"}
+		msg := []interface{}{"Fail IsTrue:"}
+		if _, file, line, ok := runtime.Caller(1); ok {
+			msg = append(msg, "[", file, line, "]")
+		}
+		a.Fatal(append(msg, args...)...)
+	}
+}
+
+func (a *assertion) IsFalse(expectFalse bool, args ...interface{}) {
+	if expectFalse {
+		msg := []interface{}{"Fail IsFalse:"}
 		if _, file, line, ok := runtime.Caller(1); ok {
 			msg = append(msg, "[", file, line, "]")
 		}
@@ -58,55 +68,55 @@ func TestStringKey(t *testing.T) {
 
 func TestKeyOrderingLessThanOtherKey(t *testing.T) {
 	a := (*assertion)(t)
-	a.Assert(
+	a.IsTrue(
 		LessThanOtherKey.LessThan(),
 		"LessThanOtherKey.LessThan()",
 	)
-	a.Assert(
+	a.IsTrue(
 		LessThanOtherKey.LessThanOrEqualTo(),
 		"LessThanOtherKey.LessThanOrEqualTo()",
 	)
-	a.Assert(
-		!LessThanOtherKey.EqualTo(),
-		"!LessThanOtherKey.EqualTo()",
+	a.IsFalse(
+		LessThanOtherKey.EqualTo(),
+		"LessThanOtherKey.EqualTo()",
 	)
-	a.Assert(
+	a.IsTrue(
 		LessThanOtherKey.NotEqualTo(),
 		"LessThanOtherKey.NotEqualTo()",
 	)
-	a.Assert(
-		!LessThanOtherKey.GreaterThan(),
-		"!LessThanOtherKey.GreaterThan()",
+	a.IsFalse(
+		LessThanOtherKey.GreaterThan(),
+		"LessThanOtherKey.GreaterThan()",
 	)
-	a.Assert(
-		!LessThanOtherKey.GreaterThanOrEqualTo(),
-		"!LessThanOtherKey.GreaterThanOrEqualTo()",
+	a.IsFalse(
+		LessThanOtherKey.GreaterThanOrEqualTo(),
+		"LessThanOtherKey.GreaterThanOrEqualTo()",
 	)
 }
 
 func TestKeyOrderingEqualToOtherKey(t *testing.T) {
 	a := (*assertion)(t)
-	a.Assert(
-		!EqualToOtherKey.LessThan(),
-		"!EqualToOtherKey.LessThan()",
+	a.IsFalse(
+		EqualToOtherKey.LessThan(),
+		"EqualToOtherKey.LessThan()",
 	)
-	a.Assert(
+	a.IsTrue(
 		EqualToOtherKey.LessThanOrEqualTo(),
 		"EqualToOtherKey.LessThanOrEqualTo()",
 	)
-	a.Assert(
+	a.IsTrue(
 		EqualToOtherKey.EqualTo(),
 		"EqualToOtherKey.EqualTo()",
 	)
-	a.Assert(
-		!EqualToOtherKey.NotEqualTo(),
-		"!EqualToOtherKey.NotEqualTo()",
+	a.IsFalse(
+		EqualToOtherKey.NotEqualTo(),
+		"EqualToOtherKey.NotEqualTo()",
 	)
-	a.Assert(
-		!EqualToOtherKey.GreaterThan(),
-		"!EqualToOtherKey.GreaterThan()",
+	a.IsFalse(
+		EqualToOtherKey.GreaterThan(),
+		"EqualToOtherKey.GreaterThan()",
 	)
-	a.Assert(
+	a.IsTrue(
 		EqualToOtherKey.GreaterThanOrEqualTo(),
 		"EqualToOtherKey.GreaterThanOrEqualTo()",
 	)
@@ -114,27 +124,27 @@ func TestKeyOrderingEqualToOtherKey(t *testing.T) {
 
 func TestKeyOrderingGreaterThanOtherKey(t *testing.T) {
 	a := (*assertion)(t)
-	a.Assert(
-		!GreaterThanOtherKey.LessThan(),
-		"!GreaterThanOtherKey.LessThan()",
+	a.IsFalse(
+		GreaterThanOtherKey.LessThan(),
+		"GreaterThanOtherKey.LessThan()",
 	)
-	a.Assert(
-		!GreaterThanOtherKey.LessThanOrEqualTo(),
-		"!GreaterThanOtherKey.LessThanOrEqualTo()",
+	a.IsFalse(
+		GreaterThanOtherKey.LessThanOrEqualTo(),
+		"GreaterThanOtherKey.LessThanOrEqualTo()",
 	)
-	a.Assert(
-		!GreaterThanOtherKey.EqualTo(),
-		"!GreaterThanOtherKey.EqualTo()",
+	a.IsFalse(
+		GreaterThanOtherKey.EqualTo(),
+		"GreaterThanOtherKey.EqualTo()",
 	)
-	a.Assert(
+	a.IsTrue(
 		GreaterThanOtherKey.NotEqualTo(),
 		"GreaterThanOtherKey.NotEqualTo()",
 	)
-	a.Assert(
+	a.IsTrue(
 		GreaterThanOtherKey.GreaterThan(),
 		"GreaterThanOtherKey.GreaterThan()",
 	)
-	a.Assert(
+	a.IsTrue(
 		GreaterThanOtherKey.GreaterThanOrEqualTo(),
 		"GreaterThanOtherKey.GreaterThanOrEqualTo()",
 	)
