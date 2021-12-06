@@ -4,6 +4,7 @@ import "strings"
 
 type NodeIteratorCallBack = func(node Node) (breakIteration bool)
 type ValueUpdater = func(oldValue interface{}) (newValue interface{}, keepOldValue bool)
+type UpdateIteratorCallBack = func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool)
 
 type NodeCounter interface{ NodeCount() int }
 type NodeDeallocator interface{ ReleaseNode(node RealNode) }
@@ -11,16 +12,15 @@ type ParentGetter interface {
 	Node
 	Parent() Node
 }
-type ParentAccessor interface {
-	RealNode
-	ParentGetter
-	SetParent(newParent Node) RealNode
-}
 
 type Tree interface {
-	NewNode(leftChild, rightChild Node, height int, key Key, value interface{}) RealNode
 	Root() Node
-	SetRoot(newRoot RealNode) Tree
+}
+
+type RealTree interface {
+	Tree
+	NewNode(leftChild, rightChild Node, height int, key Key, value interface{}) RealNode
+	SetRoot(newRoot RealNode) RealTree
 	AllowDuplicateKeys() bool
 }
 
@@ -35,9 +35,8 @@ type Node interface {
 type RealNode interface {
 	Node
 	Height() int
-	SetLeftChild(newLeftChild Node, newHeight int) RealNode
-	SetRightChild(newRightChild Node, newHeight int) RealNode
 	SetChildren(newLeftChild, newRightChild Node, newHeight int) RealNode
+	Set(newLeftChild, newRightChild Node, newHeight int, newValue interface{}) RealNode
 }
 
 type KeyOrdering int
@@ -77,14 +76,15 @@ func (key StringKey) CompareTo(other Key) KeyOrdering {
 }
 
 func Insert(tree Tree, replaceIfExists bool, key Key, value interface{}) (modified Tree, ok bool) {
+	realTree := tree.(RealTree)
 	helper := insertHelper{
-		&tree,
+		&realTree,
 		replaceIfExists,
 		&key,
 		&value,
 	}
 	if newRoot, ok := helper.insertTo(tree.Root()); ok {
-		return tree.SetRoot(newRoot), true
+		return realTree.SetRoot(newRoot), true
 	} else {
 		return tree, false
 	}
@@ -96,10 +96,11 @@ func Delete(tree Tree, key Key) (modified Tree, value interface{}, ok bool) {
 		if deallocator, ok := tree.(NodeDeallocator); ok {
 			deallocator.ReleaseNode(node.(RealNode))
 		}
+		realTree := tree.(RealTree)
 		if root, ok := newRoot.(RealNode); ok {
-			return tree.SetRoot(root), value, true
+			return realTree.SetRoot(root), value, true
 		} else {
-			return tree.SetRoot(nil), value, true
+			return realTree.SetRoot(nil), value, true
 		}
 	} else {
 		return tree, nil, false
@@ -108,7 +109,7 @@ func Delete(tree Tree, key Key) (modified Tree, value interface{}, ok bool) {
 
 func Update(tree Tree, key Key, callBack ValueUpdater) (modified Tree, ok bool) {
 	if newRoot, ok := updateValue(tree.Root(), key, callBack); ok {
-		return tree.SetRoot(newRoot), true
+		return tree.(RealTree).SetRoot(newRoot), true
 	} else {
 		return tree, false
 	}
@@ -121,18 +122,16 @@ func Replace(tree Tree, key Key, newValue interface{}) (modified Tree, ok bool) 
 }
 
 func Find(tree Tree, key Key) (node Node, ok bool) {
-	if key != nil {
-		node = tree.Root()
-		for node != nil {
-			cmp := key.CompareTo(node.Key())
-			switch {
-			case cmp.LessThan():
-				node = node.LeftChild()
-			case cmp.GreaterThan():
-				node = node.RightChild()
-			default:
-				return node, true
-			}
+	node = tree.Root()
+	for node != nil {
+		cmp := key.CompareTo(node.Key())
+		switch {
+		case cmp.LessThan():
+			node = node.LeftChild()
+		case cmp.GreaterThan():
+			node = node.RightChild()
+		default:
+			return node, true
 		}
 	}
 	return nil, false
@@ -158,7 +157,7 @@ func RangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack NodeIter
 	if lower == nil && upper == nil {
 		return Iterate(tree, descOrder, callBack)
 	}
-	bounds := newKeyBounds(lower, upper, tree.AllowDuplicateKeys())
+	bounds := newKeyBounds(lower, upper, tree.(RealTree).AllowDuplicateKeys())
 	if descOrder {
 		return descRangeNode(tree.Root(), bounds, callBack)
 	} else {
@@ -178,7 +177,7 @@ func CountRange(tree Tree, lower, upper Key) int {
 	if lower == nil && upper == nil {
 		return Count(tree)
 	}
-	if tree.AllowDuplicateKeys() {
+	if tree.(RealTree).AllowDuplicateKeys() {
 		return countExtendedRange(tree.Root(), lower, upper)
 	} else {
 		return countRange(tree.Root(), lower, upper)
@@ -265,6 +264,22 @@ func MaxAll(tree Tree) (maximums []Node, ok bool) {
 		return
 	})
 	return maximums, true
+}
+
+func UpdateIterate(tree Tree, descOrder bool, callBack UpdateIteratorCallBack) (modified Tree, ok bool) {
+	if descOrder {
+		if newRoot, updated, _ := descUpdateIterate(tree.Root(), callBack); updated {
+			return tree.(RealTree).SetRoot(newRoot), true
+		} else {
+			return tree, false
+		}
+	} else {
+		if newRoot, updated, _ := ascUpdateIterate(tree.Root(), callBack); updated {
+			return tree.(RealTree).SetRoot(newRoot), true
+		} else {
+			return tree, false
+		}
+	}
 }
 
 func (ordering KeyOrdering) LessThan() bool {
@@ -484,10 +499,6 @@ func checkBalance(node RealNode) balance {
 	}
 	heightL := getHeight(node.LeftChild())
 	heightR := getHeight(node.RightChild())
-	// 算術オーバーフローが怖いのかい？
-	// heightL - heightR
-	// heightL + 1
-	// heightR + 1
 	switch {
 	case heightL < heightR && heightL+1 < heightR:
 		return rightIsHigher
@@ -496,6 +507,18 @@ func checkBalance(node RealNode) balance {
 	default:
 		return balanced
 	}
+	// 算術オーバーフローが怖いのか？
+	// heightL - heightR
+	// heightL + 1
+	// heightR + 1
+	// だが、現実的なAVL木の高さを考えるとせいぜい高くても33～34くらいでは？
+	// 高さ10で完全二分木のノード総数は(2の10乗-1)個=1023個
+	// 高さ32で4億個？最小構成のノードでもノード1つ14bytesくらいかもだろうし
+	// (最小構成、leftChild,rightChild　32bitsサイズのアドレス値, height,data int8, key int32)
+	// 4億個もあったら最小構成でも56GB以上のメモリ・ストレージを必要とするわけで…
+	// それ以上だとメモリアドレスが64bitsサイズ、必要な容量がグっと増えるし・・・
+	// そもオーバーフローするとしたら内部データが意図せず破壊された場合のみで
+	// その場合は正常動作を保証する必要もないわけで…
 }
 
 func compareChildHeight(node Node) balance {
@@ -529,18 +552,26 @@ func calcNewHeight(leftChild, rightChild Node) int {
 	return 1 + intMax(leftHeight, rightHeight)
 }
 
+func setChildren(root RealNode, leftChild, rightChild Node) RealNode {
+	newHeight := calcNewHeight(leftChild, rightChild)
+	return root.SetChildren(leftChild, rightChild, newHeight)
+}
+
 func setLeftChild(root RealNode, newLeftChild Node) RealNode {
-	newHeight := calcNewHeight(newLeftChild, root.RightChild())
-	return root.SetLeftChild(newLeftChild, newHeight)
+	return setChildren(root, newLeftChild, root.RightChild())
 }
 
 func setRightChild(root RealNode, newRightChild Node) RealNode {
-	newHeight := calcNewHeight(root.LeftChild(), newRightChild)
-	return root.SetRightChild(newRightChild, newHeight)
+	return setChildren(root, root.LeftChild(), newRightChild)
+}
+
+func resetNode(root RealNode, newLeftChild, newRightChild Node, newValue interface{}) RealNode {
+	newHeight := calcNewHeight(newLeftChild, newRightChild)
+	return root.Set(newLeftChild, newRightChild, newHeight, newValue)
 }
 
 type insertHelper struct {
-	tree            *Tree
+	tree            *RealTree
 	replaceIfExists bool
 	key             *Key
 	value           *interface{}
@@ -597,20 +628,6 @@ func (helper *insertHelper) insertTo(root Node) (newRoot RealNode, ok bool) {
 }
 
 func rotate(root RealNode) RealNode {
-	// 無限ループは不要な気がする
-	// 複数のノードをまとめて削除するとバランス崩れが発生しそうだからその時必要？
-	/*
-		    for {
-				switch checkBalance(root) {
-				case leftIsHigher:
-					root = rotateRight(root)
-				case rightIsHigher:
-					root = rotateLeft(root)
-				default:
-					return root
-				}
-			}
-	*/
 	switch checkBalance(root) {
 	case leftIsHigher:
 		return rotateRight(root)
@@ -618,6 +635,21 @@ func rotate(root RealNode) RealNode {
 		return rotateLeft(root)
 	default:
 		return root
+	}
+}
+
+func rotateRepeat(root RealNode) RealNode {
+	// 無限ループは不要な気がする
+	// 複数のノードをまとめて削除するとバランス崩れが発生しそうだからその時必要？
+	for {
+		switch checkBalance(root) {
+		case leftIsHigher:
+			root = rotateRight(root)
+		case rightIsHigher:
+			root = rotateLeft(root)
+		default:
+			return root
+		}
 	}
 }
 
@@ -651,11 +683,6 @@ func rotateLeft(root RealNode) RealNode {
 		newLeftChild := setRightChild(root, tempLeftChild)
 		return setLeftChild(oldRootRightChild, newLeftChild)
 	}
-}
-
-func setChildren(root RealNode, leftChild, rightChild Node) RealNode {
-	newHeight := calcNewHeight(leftChild, rightChild)
-	return root.SetChildren(leftChild, rightChild, newHeight)
 }
 
 func removeNode(root Node, key Key) (newRoot, removed Node, ok bool) {
@@ -933,4 +960,100 @@ func updateValue(node Node, key Key, callBack ValueUpdater) (newNode RealNode, o
 	default:
 		panic("unreachable")
 	}
+}
+
+func ascUpdateIterate(root Node, callBack UpdateIteratorCallBack) (newRoot RealNode, updated, breakIteration bool) {
+	if root == nil {
+		return nil, false, false
+	}
+
+	leftChild, leftUpdated, breakIteration := ascUpdateIterate(root.LeftChild(), callBack)
+	if breakIteration {
+		if leftUpdated {
+			newRoot = setLeftChild(root.(RealNode), leftChild)
+		} else {
+			newRoot = root.(RealNode)
+		}
+		return newRoot, leftUpdated, breakIteration
+	}
+
+	newValue, keepOldValue, breakIteration := callBack(root.Key(), root.Value())
+	if breakIteration {
+		switch {
+		case !leftUpdated && keepOldValue:
+			newRoot = root.(RealNode)
+		case !leftUpdated && !keepOldValue:
+			newRoot = root.SetValue(newValue).(RealNode)
+		case leftUpdated && keepOldValue:
+			newRoot = setLeftChild(root.(RealNode), leftChild)
+		case leftUpdated && !keepOldValue:
+			newRoot = resetNode(root.(RealNode), leftChild, root.RightChild(), newValue)
+		}
+		updated = leftUpdated || !keepOldValue
+		return newRoot, updated, breakIteration
+	}
+
+	rightChild, rightUpdated, breakIteration := ascUpdateIterate(root.RightChild(), callBack)
+	switch {
+	case !leftUpdated && keepOldValue && !rightUpdated:
+		newRoot = root.(RealNode)
+	case !leftUpdated && !keepOldValue && !rightUpdated:
+		newRoot = root.SetValue(newValue).(RealNode)
+	case keepOldValue:
+		newRoot = setChildren(root.(RealNode), leftChild, rightChild)
+	case !keepOldValue:
+		newRoot = resetNode(root.(RealNode), leftChild, rightChild, newValue)
+	default:
+		panic("unreachable")
+	}
+	updated = leftUpdated || !keepOldValue || rightUpdated
+	return newRoot, updated, breakIteration
+}
+
+func descUpdateIterate(root Node, callBack UpdateIteratorCallBack) (newRoot RealNode, updated, breakIteration bool) {
+	if root == nil {
+		return nil, false, false
+	}
+
+	rightChild, rightUpdated, breakIteration := descUpdateIterate(root.RightChild(), callBack)
+	if breakIteration {
+		if rightUpdated {
+			newRoot = setRightChild(root.(RealNode), rightChild)
+		} else {
+			newRoot = root.(RealNode)
+		}
+		return newRoot, rightUpdated, breakIteration
+	}
+
+	newValue, keepOldValue, breakIteration := callBack(root.Key(), root.Value())
+	if breakIteration {
+		switch {
+		case !rightUpdated && keepOldValue:
+			newRoot = root.(RealNode)
+		case !rightUpdated && !keepOldValue:
+			newRoot = root.SetValue(newValue).(RealNode)
+		case rightUpdated && keepOldValue:
+			newRoot = setRightChild(root.(RealNode), rightChild)
+		case rightUpdated && !keepOldValue:
+			newRoot = resetNode(root.(RealNode), root.LeftChild(), rightChild, newValue)
+		}
+		updated = rightUpdated || !keepOldValue
+		return newRoot, updated, breakIteration
+	}
+
+	leftChild, leftUpdated, breakIteration := descUpdateIterate(root.LeftChild(), callBack)
+	switch {
+	case !leftUpdated && keepOldValue && !rightUpdated:
+		newRoot = root.(RealNode)
+	case !leftUpdated && !keepOldValue && !rightUpdated:
+		newRoot = root.SetValue(newValue).(RealNode)
+	case keepOldValue:
+		newRoot = setChildren(root.(RealNode), leftChild, rightChild)
+	case !keepOldValue:
+		newRoot = resetNode(root.(RealNode), leftChild, rightChild, newValue)
+	default:
+		panic("unreachable")
+	}
+	updated = leftUpdated || !keepOldValue || rightUpdated
+	return newRoot, updated, breakIteration
 }

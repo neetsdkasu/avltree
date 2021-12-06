@@ -599,7 +599,7 @@ func TestInsertAndDelete2(t *testing.T) {
 	}
 }
 
-func TestAscSorted(t *testing.T) {
+func TestAscIterate(t *testing.T) {
 
 	f := func(listBase []keyAndValue) []int {
 		list := omitDuplicates(listBase)
@@ -634,7 +634,7 @@ func TestAscSorted(t *testing.T) {
 	}
 }
 
-func TestDescSorted(t *testing.T) {
+func TestDescIterate(t *testing.T) {
 
 	f := func(listBase []keyAndValue) []int {
 		list := omitDuplicates(listBase)
@@ -660,6 +660,92 @@ func TestDescSorted(t *testing.T) {
 		for _, kv := range list {
 			result = append(result, kv.Key)
 			result = append(result, kv.Value)
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAscHalfIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		count := (len(list) + 1) / 2
+		result := []int{}
+		avltree.Iterate(tree, false, func(node avltree.Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			count--
+			breakIteration = count <= 0
+			return
+		})
+		return result
+	}
+
+	g := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		count := (len(list) + 1) / 2
+		result := []int{}
+		for _, kv := range list {
+			result = append(result, kv.Key)
+			result = append(result, kv.Value)
+			count--
+			if count <= 0 {
+				break
+			}
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDescHalfIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		count := (len(list) + 1) / 2
+		result := []int{}
+		avltree.Iterate(tree, true, func(node avltree.Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			count--
+			breakIteration = count <= 0
+			return
+		})
+		return result
+	}
+
+	g := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key > list[j].Key
+		})
+		count := (len(list) + 1) / 2
+		result := []int{}
+		for _, kv := range list {
+			result = append(result, kv.Key)
+			result = append(result, kv.Value)
+			count--
+			if count <= 0 {
+				break
+			}
 		}
 		return result
 	}
@@ -805,6 +891,58 @@ func TestDescRangeIterate(t *testing.T) {
 			}
 			result = append(result, kv.Key)
 			result = append(result, kv.Value)
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDescHalfRangeIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		result := []int{}
+		lower := IntKey(k1)
+		upper := IntKey(k2)
+		stopKey := IntKey((k2 + k1) / 2)
+		avltree.RangeIterate(tree, true, lower, upper, func(node avltree.Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			breakIteration = stopKey.CompareTo(node.Key()).LessThan()
+			return
+		})
+		return result
+	}
+
+	g := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key > list[j].Key
+		})
+		result := []int{}
+		stopKey := (k2 + k1) / 2
+		for _, kv := range list {
+			if kv.Key < k1 || k2 < kv.Key {
+				continue
+			}
+			result = append(result, kv.Key)
+			result = append(result, kv.Value)
+			if stopKey < kv.Key {
+				break
+			}
 		}
 		return result
 	}
@@ -1594,7 +1732,7 @@ func TestKeepOldValue(t *testing.T) {
 			avltree.Update(tree, IntKey(kv.Key), func(oldValue interface{}) (newValue interface{}, keepOldValue bool) {
 				value := oldValue.(int)
 				newValue = value >> 1
-                keepOldValue = true
+				keepOldValue = true
 				return
 			})
 		}
@@ -1656,6 +1794,196 @@ func TestReplaceValue(t *testing.T) {
 		for _, kv := range list {
 			result = append(result, kv.Key)
 			result = append(result, kv.Value^value)
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAscUpdateIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		avltree.UpdateIterate(tree, false, func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool) {
+			value := oldValue.(int)
+			newValue = value >> 1
+			keepOldValue = value < 0
+			return
+		})
+		result := []int{}
+		avltree.Iterate(tree, false, func(node avltree.Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		return result
+	}
+
+	g := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		result := []int{}
+		for _, kv := range list {
+			result = append(result, kv.Key)
+			if kv.Value < 0 {
+				result = append(result, kv.Value)
+			} else {
+				result = append(result, kv.Value>>1)
+			}
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAscHalfUpdateIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		count := (len(list) + 1) / 2
+		avltree.UpdateIterate(tree, false, func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool) {
+			value := oldValue.(int)
+			newValue = value >> 1
+			keepOldValue = value < 0
+			count--
+			breakIteration = count <= 0
+			return
+		})
+		result := []int{}
+		avltree.Iterate(tree, false, func(node avltree.Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		return result
+	}
+
+	g := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		count := (len(list) + 1) / 2
+		result := []int{}
+		for _, kv := range list {
+			result = append(result, kv.Key)
+			if count <= 0 || kv.Value < 0 {
+				result = append(result, kv.Value)
+			} else {
+				result = append(result, kv.Value>>1)
+			}
+			count--
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDescUpdateIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		avltree.UpdateIterate(tree, true, func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool) {
+			value := oldValue.(int)
+			newValue = value >> 1
+			keepOldValue = value < 0
+			return
+		})
+		result := []int{}
+		avltree.Iterate(tree, false, func(node avltree.Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		return result
+	}
+
+	g := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		result := []int{}
+		for _, kv := range list {
+			result = append(result, kv.Key)
+			if kv.Value < 0 {
+				result = append(result, kv.Value)
+			} else {
+				result = append(result, kv.Value>>1)
+			}
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDescHalfUpdateIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, true, IntKey(kv.Key), kv.Value)
+		}
+		count := (len(list) + 1) / 2
+		avltree.UpdateIterate(tree, true, func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool) {
+			value := oldValue.(int)
+			newValue = value >> 1
+			keepOldValue = value < 0
+			count--
+			breakIteration = count <= 0
+			return
+		})
+		result := []int{}
+		avltree.Iterate(tree, false, func(node avltree.Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		return result
+	}
+
+	g := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		count := len(list) - (len(list)+1)/2
+		result := []int{}
+		for _, kv := range list {
+			result = append(result, kv.Key)
+			if count <= 0 && kv.Value >= 0 {
+				result = append(result, kv.Value>>1)
+			} else {
+				result = append(result, kv.Value)
+			}
+			count--
 		}
 		return result
 	}
