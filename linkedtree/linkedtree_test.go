@@ -2223,3 +2223,159 @@ func TestDescHalfUpdateRangeIterate(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestAscUpdateRange(t *testing.T) {
+
+	f := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		lower := IntKey(k1)
+		upper := IntKey(k2)
+		avltree.UpdateRange(tree, false, lower, upper, func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue bool) {
+			value := oldValue.(int)
+			newValue = value >> 1
+			keepOldValue = value < 0
+			return
+		})
+		result := []int{}
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		return result
+	}
+
+	g := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		result := []int{}
+		for _, kv := range list {
+			result = append(result, kv.Key)
+			if kv.Key < k1 || k2 < kv.Key || kv.Value < 0 {
+				result = append(result, kv.Value)
+			} else {
+				result = append(result, kv.Value>>1)
+			}
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDescUpdateRange(t *testing.T) {
+
+	f := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		lower := IntKey(k1)
+		upper := IntKey(k2)
+		avltree.UpdateRange(tree, true, lower, upper, func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue bool) {
+			value := oldValue.(int)
+			newValue = value >> 1
+			keepOldValue = value < 0
+			return
+		})
+		result := []int{}
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		return result
+	}
+
+	g := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		result := []int{}
+		for _, kv := range list {
+			result = append(result, kv.Key)
+			if kv.Key < k1 || k2 < kv.Key || kv.Value < 0 {
+				result = append(result, kv.Value)
+			} else {
+				result = append(result, kv.Value>>1)
+			}
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestReplaceRange(t *testing.T) {
+
+	const value int = 123456
+
+	f := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		lower := IntKey(k1)
+		upper := IntKey(k2)
+		avltree.ReplaceRange(tree, lower, upper, value)
+		result := []int{}
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		return result
+	}
+
+	g := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		result := []int{}
+		for _, kv := range list {
+			result = append(result, kv.Key)
+			if kv.Key < k1 || k2 < kv.Key {
+				result = append(result, kv.Value)
+			} else {
+				result = append(result, value)
+			}
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
