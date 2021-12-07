@@ -2573,14 +2573,12 @@ func TestAscDeleteIterate(t *testing.T) {
 		result := []int{}
 		for _, kv := range list {
 			if kv.Value >= 0 {
-				result = append(result, kv.Key)
-				result = append(result, kv.Value)
+				result = append(result, kv.Key, kv.Value)
 			}
 		}
 		for _, kv := range list {
 			if kv.Value < 0 {
-				result = append(result, kv.Key)
-				result = append(result, kv.Value)
+				result = append(result, kv.Key, kv.Value)
 			}
 		}
 		return result
@@ -2600,7 +2598,7 @@ func TestAscHalfDeleteIterate(t *testing.T) {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
 		count := (len(list) + 1) / 2
-		avltree.DeleteIterate(tree, false, func(key Key, oldValue interface{}) (deleteNode, breakIteration bool) {
+		_, values := avltree.DeleteIterate(tree, false, func(key Key, oldValue interface{}) (deleteNode, breakIteration bool) {
 			value := oldValue.(int)
 			deleteNode = value < 0
 			count--
@@ -2613,6 +2611,10 @@ func TestAscHalfDeleteIterate(t *testing.T) {
 			result = append(result, node.Value().(int))
 			return
 		})
+		for _, v := range values {
+			result = append(result, int(v.Key().(IntKey)))
+			result = append(result, v.Value().(int))
+		}
 		return result
 	}
 
@@ -2623,13 +2625,16 @@ func TestAscHalfDeleteIterate(t *testing.T) {
 		})
 		count := (len(list) + 1) / 2
 		result := []int{}
+		deleted := []int{}
 		for _, kv := range list {
 			if count <= 0 || kv.Value >= 0 {
-				result = append(result, kv.Key)
-				result = append(result, kv.Value)
+				result = append(result, kv.Key, kv.Value)
+			} else {
+				deleted = append(deleted, kv.Key, kv.Value)
 			}
 			count--
 		}
+		result = append(result, deleted...)
 		return result
 	}
 
@@ -2646,7 +2651,7 @@ func TestDescDeleteIterate(t *testing.T) {
 		for _, kv := range list {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
-		avltree.DeleteIterate(tree, true, func(key Key, oldValue interface{}) (deleteNode, breakIteration bool) {
+		_, values := avltree.DeleteIterate(tree, true, func(key Key, oldValue interface{}) (deleteNode, breakIteration bool) {
 			value := oldValue.(int)
 			deleteNode = value < 0
 			return
@@ -2657,6 +2662,10 @@ func TestDescDeleteIterate(t *testing.T) {
 			result = append(result, node.Value().(int))
 			return
 		})
+		for _, v := range values {
+			result = append(result, int(v.Key().(IntKey)))
+			result = append(result, v.Value().(int))
+		}
 		return result
 	}
 
@@ -2666,11 +2675,16 @@ func TestDescDeleteIterate(t *testing.T) {
 			return list[i].Key < list[j].Key
 		})
 		result := []int{}
+		deleted := []int{}
 		for _, kv := range list {
 			if kv.Value >= 0 {
-				result = append(result, kv.Key)
-				result = append(result, kv.Value)
+				result = append(result, kv.Key, kv.Value)
+			} else {
+				deleted = append(deleted, kv.Value, kv.Key)
 			}
+		}
+		for i := range deleted {
+			result = append(result, deleted[len(deleted)-1-i])
 		}
 		return result
 	}
@@ -2689,7 +2703,7 @@ func TestDescHalfDeleteIterate(t *testing.T) {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
 		count := (len(list) + 1) / 2
-		avltree.DeleteIterate(tree, true, func(key Key, oldValue interface{}) (deleteNode, breakIteration bool) {
+		_, values := avltree.DeleteIterate(tree, true, func(key Key, oldValue interface{}) (deleteNode, breakIteration bool) {
 			value := oldValue.(int)
 			deleteNode = value < 0
 			count--
@@ -2702,6 +2716,10 @@ func TestDescHalfDeleteIterate(t *testing.T) {
 			result = append(result, node.Value().(int))
 			return
 		})
+		for _, v := range values {
+			result = append(result, int(v.Key().(IntKey)))
+			result = append(result, v.Value().(int))
+		}
 		return result
 	}
 
@@ -2712,12 +2730,17 @@ func TestDescHalfDeleteIterate(t *testing.T) {
 		})
 		count := len(list) - (len(list)+1)/2
 		result := []int{}
+		deleted := []int{}
 		for _, kv := range list {
 			if count > 0 || kv.Value >= 0 {
-				result = append(result, kv.Key)
-				result = append(result, kv.Value)
+				result = append(result, kv.Key, kv.Value)
+			} else {
+				deleted = append(deleted, kv.Value, kv.Key)
 			}
 			count--
+		}
+		for i := range deleted {
+			result = append(result, deleted[len(deleted)-1-i])
 		}
 		return result
 	}

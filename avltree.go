@@ -733,19 +733,6 @@ func (helper *insertHelper) insertTo(root Node) (newRoot RealNode, ok bool) {
 }
 
 func rotate(root RealNode) RealNode {
-	switch checkBalance(root) {
-	case leftIsHigher:
-		return rotateRight(root)
-	case rightIsHigher:
-		return rotateLeft(root)
-	case balanced:
-		return root
-	default:
-		panic("unreachable")
-	}
-}
-
-func rotateRepeat(root RealNode) RealNode {
 	// 無限ループは不要な気がする
 	// 複数のノードをまとめて削除するとバランス崩れが発生しそうだからその時必要？
 	for {
@@ -768,12 +755,12 @@ func rotateRight(root RealNode) RealNode {
 		newRoot := oldRootLeftChild.RightChild().(RealNode)
 		tempLeftChild := newRoot.LeftChild()
 		tempRightChild := newRoot.RightChild()
-		newRootRightChild := setLeftChild(root, tempRightChild)
-		newRootLeftChild := setRightChild(oldRootLeftChild, tempLeftChild)
+		newRootRightChild := rotate(setLeftChild(root, tempRightChild))
+		newRootLeftChild := rotate(setRightChild(oldRootLeftChild, tempLeftChild))
 		return setChildren(newRoot, newRootLeftChild, newRootRightChild)
 	} else {
 		tempRightChild := oldRootLeftChild.RightChild()
-		newRootRightChild := setLeftChild(root, tempRightChild)
+		newRootRightChild := rotate(setLeftChild(root, tempRightChild))
 		return setRightChild(oldRootLeftChild, newRootRightChild)
 	}
 }
@@ -784,12 +771,12 @@ func rotateLeft(root RealNode) RealNode {
 		newRoot := oldRootRightChild.LeftChild().(RealNode)
 		tempLeftChild := newRoot.LeftChild()
 		tempRightChild := newRoot.RightChild()
-		newRootLeftChild := setRightChild(root, tempLeftChild)
-		newRootRightChild := setLeftChild(oldRootRightChild, tempRightChild)
+		newRootLeftChild := rotate(setRightChild(root, tempLeftChild))
+		newRootRightChild := rotate(setLeftChild(oldRootRightChild, tempRightChild))
 		return setChildren(newRoot, newRootLeftChild, newRootRightChild)
 	} else {
 		tempLeftChild := oldRootRightChild.LeftChild()
-		newLeftChild := setRightChild(root, tempLeftChild)
+		newLeftChild := rotate(setRightChild(root, tempLeftChild))
 		return setLeftChild(oldRootRightChild, newLeftChild)
 	}
 }
@@ -1306,41 +1293,19 @@ func descUpdateRange(root Node, bounds keyBounds, callBack UpdateIteratorCallBac
 	return newRoot, updated, breakIteration
 }
 
-func debugBalance(node Node) {
-	if node == nil {
-		return
-	}
-	hLeft := getHeight(node.LeftChild())
-	hRight := getHeight(node.RightChild())
-	hMin, hMax := hLeft, hRight
-	if hMax < hMin {
-		hMin, hMax = hMax, hMin
-	}
-	if 1 < hMax-hMin {
-		println(node)
-		panic("what?")
-	}
-	if getHeight(node)-hMax != 1 {
-		println(node)
-		panic("WHAT?")
-	}
-}
-
 func ascDeleteIterate(root Node, callBack DeleteIteratorCallBack) (newRoot Node, deleted []Node, breakIteration bool) {
 	if root == nil {
 		return nil, nil, false
 	}
 
 	leftChild, leftDeleted, breakIteration := ascDeleteIterate(root.LeftChild(), callBack)
-	debugBalance(leftChild)
 	if breakIteration {
 		if len(leftDeleted) > 0 {
 			newRoot = setLeftChild(root.(RealNode), leftChild)
 		} else {
 			newRoot = root
 		}
-		newRoot = rotateRepeat(newRoot.(RealNode))
-		debugBalance(newRoot)
+		newRoot = rotate(newRoot.(RealNode))
 		return newRoot, leftDeleted, breakIteration
 	}
 
@@ -1364,14 +1329,12 @@ func ascDeleteIterate(root Node, callBack DeleteIteratorCallBack) (newRoot Node,
 			newRoot = root
 		}
 		if newRoot != nil {
-			newRoot = rotateRepeat(newRoot.(RealNode))
+			newRoot = rotate(newRoot.(RealNode))
 		}
-		debugBalance(newRoot)
 		return newRoot, deleted, breakIteration
 	}
 
 	rightChild, rightDeleted, breakIteration := ascDeleteIterate(root.RightChild(), callBack)
-	debugBalance(rightChild)
 	deleted = leftDeleted
 	switch {
 	case len(leftDeleted) == 0 && !deleteRoot && len(rightDeleted) == 0:
@@ -1393,9 +1356,8 @@ func ascDeleteIterate(root Node, callBack DeleteIteratorCallBack) (newRoot Node,
 	}
 	deleted = append(deleted, rightDeleted...)
 	if newRoot != nil {
-		newRoot = rotateRepeat(newRoot.(RealNode))
+		newRoot = rotate(newRoot.(RealNode))
 	}
-	debugBalance(newRoot)
 	return newRoot, deleted, breakIteration
 }
 
@@ -1411,7 +1373,7 @@ func descDeleteIterate(root Node, callBack DeleteIteratorCallBack) (newRoot Node
 		} else {
 			newRoot = root
 		}
-		return rotateRepeat(newRoot.(RealNode)), rightDeleted, breakIteration
+		return rotate(newRoot.(RealNode)), rightDeleted, breakIteration
 	}
 
 	deleteRoot, breakIteration := callBack(root.Key(), root.Value())
@@ -1434,7 +1396,7 @@ func descDeleteIterate(root Node, callBack DeleteIteratorCallBack) (newRoot Node
 			newRoot = root
 		}
 		if newRoot != nil {
-			newRoot = rotateRepeat(newRoot.(RealNode))
+			newRoot = rotate(newRoot.(RealNode))
 		}
 		return newRoot, deleted, breakIteration
 	}
@@ -1462,7 +1424,7 @@ func descDeleteIterate(root Node, callBack DeleteIteratorCallBack) (newRoot Node
 	}
 	deleted = append(deleted, leftDeleted...)
 	if newRoot != nil {
-		newRoot = rotateRepeat(newRoot.(RealNode))
+		newRoot = rotate(newRoot.(RealNode))
 	}
 	return newRoot, deleted, breakIteration
 }
