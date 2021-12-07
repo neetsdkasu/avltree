@@ -8,6 +8,8 @@ import (
 	"avltree"
 )
 
+var cfg1000 = &quick.Config{MaxCount: 1000}
+
 type IntKey = avltree.IntKey
 
 type keyAndValue struct {
@@ -93,10 +95,7 @@ func TestInsertTwoEntries(t *testing.T) {
 		return tree
 	}
 
-	var cfg quick.Config
-	cfg.MaxCount = 1000
-
-	if err := quick.CheckEqual(f, g, &cfg); err != nil {
+	if err := quick.CheckEqual(f, g, cfg1000); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -130,10 +129,7 @@ func TestRejectDuplicateKey(t *testing.T) {
 		return tree
 	}
 
-	var cfg quick.Config
-	cfg.MaxCount = 1000
-
-	if err := quick.CheckEqual(f, g, &cfg); err != nil {
+	if err := quick.CheckEqual(f, g, cfg1000); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -167,10 +163,7 @@ func TestReplaceDuplicateKey(t *testing.T) {
 		return tree
 	}
 
-	var cfg quick.Config
-	cfg.MaxCount = 1000
-
-	if err := quick.CheckEqual(f, g, &cfg); err != nil {
+	if err := quick.CheckEqual(f, g, cfg1000); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -215,10 +208,7 @@ func TestAllowDuplicateKey(t *testing.T) {
 		return tree
 	}
 
-	var cfg quick.Config
-	cfg.MaxCount = 1000
-
-	if err := quick.CheckEqual(f, g, &cfg); err != nil {
+	if err := quick.CheckEqual(f, g, cfg1000); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -305,7 +295,7 @@ func TestHeight(t *testing.T) {
 		return nil
 	}
 
-	if err := quick.CheckEqual(f, g, nil); err != nil {
+	if err := quick.CheckEqual(f, g, cfg1000); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -363,7 +353,7 @@ func TestParent(t *testing.T) {
 		return nil
 	}
 
-	if err := quick.CheckEqual(f, g, nil); err != nil {
+	if err := quick.CheckEqual(f, g, cfg1000); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -462,7 +452,7 @@ func TestCount(t *testing.T) {
 		return len(list)
 	}
 
-	if err := quick.CheckEqual(f, g, nil); err != nil {
+	if err := quick.CheckEqual(f, g, cfg1000); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -1453,6 +1443,59 @@ func TestDeleteAll(t *testing.T) {
 		}
 		result[delkey%keymax] = []int(nil)
 		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDeleteAllHeight(t *testing.T) {
+
+	const keymax = 4
+
+	f := func(list []keyAndValue, delkey int) avltree.Node {
+		tree := NewLinkedTree(true)
+		for _, kv := range list {
+			key := kv.Key
+			if key < 0 {
+				key ^= -1
+			}
+			avltree.Insert(tree, false, IntKey(key%keymax), kv.Value)
+		}
+		if delkey < 0 {
+			delkey ^= -1
+		}
+		avltree.DeleteAll(tree, IntKey(delkey%keymax))
+		var invalidNode avltree.Node
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			height := node.(avltree.RealNode).Height()
+			var hLeft, hRight int
+			if lChild, ok := node.LeftChild().(avltree.RealNode); ok {
+				hLeft = lChild.Height()
+			}
+			if rChild, ok := node.RightChild().(avltree.RealNode); ok {
+				hRight = rChild.Height()
+			}
+			hMin, hMax := hLeft, hRight
+			if hMax < hMin {
+				hMin, hMax = hMax, hMin
+			}
+			if 1 < hMax-hMin {
+				invalidNode = node
+				breakIteration = true
+			}
+			if height-hMax != 1 {
+				invalidNode = node
+				breakIteration = true
+			}
+			return
+		})
+		return invalidNode
+	}
+
+	g := func(list []keyAndValue, delkey int) avltree.Node {
+		return nil
 	}
 
 	if err := quick.CheckEqual(f, g, nil); err != nil {
@@ -2504,7 +2547,7 @@ func TestAscDeleteIterate(t *testing.T) {
 		for _, kv := range list {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
-		avltree.DeleteIterate(tree, false, func(key Key, oldValue interface{}) (deleteNode, breakIteration bool) {
+		_, values := avltree.DeleteIterate(tree, false, func(key Key, oldValue interface{}) (deleteNode, breakIteration bool) {
 			value := oldValue.(int)
 			deleteNode = value < 0
 			return
@@ -2515,6 +2558,10 @@ func TestAscDeleteIterate(t *testing.T) {
 			result = append(result, node.Value().(int))
 			return
 		})
+		for _, v := range values {
+			result = append(result, int(v.Key().(IntKey)))
+			result = append(result, v.Value().(int))
+		}
 		return result
 	}
 
@@ -2526,6 +2573,12 @@ func TestAscDeleteIterate(t *testing.T) {
 		result := []int{}
 		for _, kv := range list {
 			if kv.Value >= 0 {
+				result = append(result, kv.Key)
+				result = append(result, kv.Value)
+			}
+		}
+		for _, kv := range list {
+			if kv.Value < 0 {
 				result = append(result, kv.Key)
 				result = append(result, kv.Value)
 			}
@@ -2670,6 +2723,104 @@ func TestDescHalfDeleteIterate(t *testing.T) {
 	}
 
 	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAscDeleteIterateHeight(t *testing.T) {
+
+	f := func(listBase []keyAndValue) avltree.Node {
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		avltree.DeleteIterate(tree, false, func(key Key, oldValue interface{}) (deleteNode, breakIteration bool) {
+			value := oldValue.(int)
+			deleteNode = value < 0
+			return
+		})
+		var invalidNode Node
+		avltree.Iterate(tree, false, func(node avltree.Node) (breakIteration bool) {
+			height := node.(avltree.RealNode).Height()
+			var hLeft, hRight int
+			if leftChild, ok := node.LeftChild().(avltree.RealNode); ok {
+				hLeft = leftChild.Height()
+			}
+			if rightChild, ok := node.RightChild().(avltree.RealNode); ok {
+				hRight = rightChild.Height()
+			}
+			hMin, hMax := hLeft, hRight
+			if hMax < hMin {
+				hMin, hMax = hMax, hMin
+			}
+			if 1 < hMax-hMin {
+				invalidNode = node
+				breakIteration = true
+			}
+			if height-hMax != 1 {
+				invalidNode = node
+				breakIteration = true
+			}
+			return
+		})
+		return invalidNode
+	}
+
+	g := func(listBase []keyAndValue) avltree.Node {
+		return nil
+	}
+
+	if err := quick.CheckEqual(f, g, cfg1000); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDescDeleteIterateHeight(t *testing.T) {
+
+	f := func(listBase []keyAndValue) avltree.Node {
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		avltree.DeleteIterate(tree, true, func(key Key, oldValue interface{}) (deleteNode, breakIteration bool) {
+			value := oldValue.(int)
+			deleteNode = value < 0
+			return
+		})
+		var invalidNode Node
+		avltree.Iterate(tree, false, func(node avltree.Node) (breakIteration bool) {
+			height := node.(avltree.RealNode).Height()
+			var hLeft, hRight int
+			if leftChild, ok := node.LeftChild().(avltree.RealNode); ok {
+				hLeft = leftChild.Height()
+			}
+			if rightChild, ok := node.RightChild().(avltree.RealNode); ok {
+				hRight = rightChild.Height()
+			}
+			hMin, hMax := hLeft, hRight
+			if hMax < hMin {
+				hMin, hMax = hMax, hMin
+			}
+			if 1 < hMax-hMin {
+				invalidNode = node
+				breakIteration = true
+			}
+			if height-hMax != 1 {
+				invalidNode = node
+				breakIteration = true
+			}
+			return
+		})
+		return invalidNode
+	}
+
+	g := func(listBase []keyAndValue) avltree.Node {
+		return nil
+	}
+
+	if err := quick.CheckEqual(f, g, cfg1000); err != nil {
 		t.Fatal(err)
 	}
 }

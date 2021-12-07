@@ -25,9 +25,13 @@ type RealTree interface {
 	AllowDuplicateKeys() bool
 }
 
-type Node interface {
+type KeyAndValue interface {
 	Key() Key
 	Value() interface{}
+}
+
+type Node interface {
+	KeyAndValue
 	LeftChild() Node
 	RightChild() Node
 	SetValue(newValue interface{}) Node
@@ -289,7 +293,20 @@ func MaxAll(tree Tree) (maximums []Node, ok bool) {
 	return maximums, true
 }
 
-func DeleteIterate(tree Tree, descOrder bool, callBack DeleteIteratorCallBack) (modified Tree, values []interface{}) {
+type keyAndValue struct {
+	key   Key
+	value interface{}
+}
+
+func (kv *keyAndValue) Key() Key {
+	return kv.key
+}
+
+func (kv *keyAndValue) Value() interface{} {
+	return kv.value
+}
+
+func DeleteIterate(tree Tree, descOrder bool, callBack DeleteIteratorCallBack) (modified Tree, values []KeyAndValue) {
 	var newRoot Node
 	var deleted []Node
 	if descOrder {
@@ -301,7 +318,10 @@ func DeleteIterate(tree Tree, descOrder bool, callBack DeleteIteratorCallBack) (
 		return tree, nil
 	}
 	for _, node := range deleted {
-		values = append(values, node.Value())
+		values = append(values, &keyAndValue{
+			node.Key(),
+			node.Value(),
+		})
 		if releaser, ok := tree.(NodeReleaser); ok {
 			releaser.ReleaseNode(node.(RealNode))
 		}
@@ -568,9 +588,9 @@ func getHeight(node Node) int {
 type balance int
 
 const (
-	balanced balance = iota
-	leftIsHigher
-	rightIsHigher
+	balanced      balance = 0
+	leftIsHigher  balance = -1
+	rightIsHigher balance = 1
 )
 
 func checkBalance(node RealNode) balance {
@@ -718,8 +738,10 @@ func rotate(root RealNode) RealNode {
 		return rotateRight(root)
 	case rightIsHigher:
 		return rotateLeft(root)
-	default:
+	case balanced:
 		return root
+	default:
+		panic("unreachable")
 	}
 }
 
@@ -732,8 +754,10 @@ func rotateRepeat(root RealNode) RealNode {
 			root = rotateRight(root)
 		case rightIsHigher:
 			root = rotateLeft(root)
-		default:
+		case balanced:
 			return root
+		default:
+			panic("unreachable")
 		}
 	}
 }
@@ -821,6 +845,9 @@ func removeMin(root Node) (newRoot, removed Node) {
 	leftChild := root.LeftChild()
 	if leftChild == nil {
 		newRoot = root.RightChild()
+		if newRoot != nil {
+			newRoot = rotate(newRoot.(RealNode))
+		}
 		return newRoot, root
 	}
 	leftChild, removed = removeMin(leftChild)
@@ -836,6 +863,9 @@ func removeMax(root Node) (newRoot, removed Node) {
 	rightChild := root.RightChild()
 	if rightChild == nil {
 		newRoot = root.LeftChild()
+		if newRoot != nil {
+			newRoot = rotate(newRoot.(RealNode))
+		}
 		return newRoot, root
 	}
 	rightChild, removed = removeMax(rightChild)
@@ -1276,19 +1306,42 @@ func descUpdateRange(root Node, bounds keyBounds, callBack UpdateIteratorCallBac
 	return newRoot, updated, breakIteration
 }
 
+func debugBalance(node Node) {
+	if node == nil {
+		return
+	}
+	hLeft := getHeight(node.LeftChild())
+	hRight := getHeight(node.RightChild())
+	hMin, hMax := hLeft, hRight
+	if hMax < hMin {
+		hMin, hMax = hMax, hMin
+	}
+	if 1 < hMax-hMin {
+		println(node)
+		panic("what?")
+	}
+	if getHeight(node)-hMax != 1 {
+		println(node)
+		panic("WHAT?")
+	}
+}
+
 func ascDeleteIterate(root Node, callBack DeleteIteratorCallBack) (newRoot Node, deleted []Node, breakIteration bool) {
 	if root == nil {
 		return nil, nil, false
 	}
 
 	leftChild, leftDeleted, breakIteration := ascDeleteIterate(root.LeftChild(), callBack)
+	debugBalance(leftChild)
 	if breakIteration {
 		if len(leftDeleted) > 0 {
 			newRoot = setLeftChild(root.(RealNode), leftChild)
 		} else {
 			newRoot = root
 		}
-		return rotateRepeat(newRoot.(RealNode)), leftDeleted, breakIteration
+		newRoot = rotateRepeat(newRoot.(RealNode))
+		debugBalance(newRoot)
+		return newRoot, leftDeleted, breakIteration
 	}
 
 	deleteRoot, breakIteration := callBack(root.Key(), root.Value())
@@ -1313,11 +1366,12 @@ func ascDeleteIterate(root Node, callBack DeleteIteratorCallBack) (newRoot Node,
 		if newRoot != nil {
 			newRoot = rotateRepeat(newRoot.(RealNode))
 		}
+		debugBalance(newRoot)
 		return newRoot, deleted, breakIteration
 	}
 
 	rightChild, rightDeleted, breakIteration := ascDeleteIterate(root.RightChild(), callBack)
-
+	debugBalance(rightChild)
 	deleted = leftDeleted
 	switch {
 	case len(leftDeleted) == 0 && !deleteRoot && len(rightDeleted) == 0:
@@ -1341,6 +1395,7 @@ func ascDeleteIterate(root Node, callBack DeleteIteratorCallBack) (newRoot Node,
 	if newRoot != nil {
 		newRoot = rotateRepeat(newRoot.(RealNode))
 	}
+	debugBalance(newRoot)
 	return newRoot, deleted, breakIteration
 }
 
