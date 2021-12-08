@@ -2,10 +2,11 @@ package avltree
 
 import "strings"
 
-type NodeIteratorCallBack = func(node Node) (breakIteration bool)
-type ValueUpdaterCallBack = func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue bool)
-type UpdateIteratorCallBack = func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool)
-type DeleteIteratorCallBack = func(key Key, value interface{}) (deleteNode, breakIteration bool)
+type IterateCallBack = func(node Node) (breakIteration bool)
+type UpdateValueCallBack = func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue bool)
+type UpdateIterateCallBack = func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool)
+type DeleteIterateCallBack = func(key Key, value interface{}) (deleteNode, breakIteration bool)
+type AlterNodeCallBack = func(node AlterNode) (request AlterRequest)
 
 type NodeCounter interface{ NodeCount() int }
 type NodeReleaser interface{ ReleaseNode(node RealNode) }
@@ -113,7 +114,7 @@ func Delete(tree Tree, key Key) (modified Tree, value interface{}, ok bool) {
 	}
 }
 
-func Update(tree Tree, key Key, callBack ValueUpdaterCallBack) (modified Tree, ok bool) {
+func Update(tree Tree, key Key, callBack UpdateValueCallBack) (modified Tree, ok bool) {
 	if newRoot, ok := updateValue(tree.Root(), key, callBack); ok {
 		return tree.(RealTree).SetRoot(newRoot), true
 	} else {
@@ -125,6 +126,41 @@ func Replace(tree Tree, key Key, newValue interface{}) (modified Tree, ok bool) 
 	return Update(tree, key, func(key Key, oldValue interface{}) (interface{}, bool) {
 		return newValue, false
 	})
+}
+
+type AlterNode interface {
+	KeyAndValue
+	Keep() AlterRequest
+	Replace(newValue interface{}) AlterRequest
+	Delete() AlterRequest
+}
+
+type alterNode struct {
+	node Node
+}
+
+type AlterRequest struct {
+	replaceValue bool
+	newValue     interface{}
+	deleteNode   bool
+}
+
+func Alter(tree Tree, key Key, callBack AlterNodeCallBack) (modified Tree, deletedValue interface{}, ok bool) {
+	if newRoot, deleted, ok := alter(tree.Root(), key, callBack); ok {
+		if deleted != nil {
+			deletedValue = deleted.Value()
+			if releaser, ok := tree.(NodeReleaser); ok {
+				releaser.ReleaseNode(deleted.(RealNode))
+			}
+		}
+		if root, ok := newRoot.(RealNode); ok {
+			return tree.(RealTree).SetRoot(root), deletedValue, true
+		} else {
+			return tree.(RealTree).SetRoot(nil), deletedValue, true
+		}
+	} else {
+		return tree, nil, false
+	}
 }
 
 func Find(tree Tree, key Key) (node Node, ok bool) {
@@ -143,7 +179,7 @@ func Find(tree Tree, key Key) (node Node, ok bool) {
 	return nil, false
 }
 
-func Iterate(tree Tree, descOrder bool, callBack NodeIteratorCallBack) (ok bool) {
+func Iterate(tree Tree, descOrder bool, callBack IterateCallBack) (ok bool) {
 	if descOrder {
 		return descIterateNode(tree.Root(), callBack)
 	} else {
@@ -159,7 +195,7 @@ func Range(tree Tree, descOrder bool, lower, upper Key) (nodes []Node) {
 	return
 }
 
-func RangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack NodeIteratorCallBack) (ok bool) {
+func RangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack IterateCallBack) (ok bool) {
 	if lower == nil && upper == nil {
 		return Iterate(tree, descOrder, callBack)
 	}
@@ -228,7 +264,7 @@ func DeleteAll(tree Tree, key Key) (modified Tree, values []interface{}) {
 	return tree, values
 }
 
-func UpdateAll(tree Tree, key Key, callBack ValueUpdaterCallBack) (modified Tree, ok bool) {
+func UpdateAll(tree Tree, key Key, callBack UpdateValueCallBack) (modified Tree, ok bool) {
 	if key != nil {
 		return UpdateRangeIterate(tree, false, key, key, func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool) {
 			newValue, keepOldValue = callBack(key, oldValue)
@@ -302,7 +338,7 @@ func (kv *keyAndValue) Value() interface{} {
 	return kv.value
 }
 
-func DeleteIterate(tree Tree, descOrder bool, callBack DeleteIteratorCallBack) (modified Tree, values []KeyAndValue) {
+func DeleteIterate(tree Tree, descOrder bool, callBack DeleteIterateCallBack) (modified Tree, values []KeyAndValue) {
 	var newRoot Node
 	var deleted []Node
 	if descOrder {
@@ -336,7 +372,7 @@ func DeleteRange(tree Tree, descOrder bool, lower, upper Key) (modified Tree, va
 	})
 }
 
-func DeleteRangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack DeleteIteratorCallBack) (modified Tree, values []KeyAndValue) {
+func DeleteRangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack DeleteIterateCallBack) (modified Tree, values []KeyAndValue) {
 	if lower == nil && upper == nil {
 		return DeleteIterate(tree, descOrder, callBack)
 	}
@@ -367,7 +403,7 @@ func DeleteRangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack De
 	}
 }
 
-func UpdateIterate(tree Tree, descOrder bool, callBack UpdateIteratorCallBack) (modified Tree, ok bool) {
+func UpdateIterate(tree Tree, descOrder bool, callBack UpdateIterateCallBack) (modified Tree, ok bool) {
 	if descOrder {
 		if newRoot, updated, _ := descUpdateIterate(tree.Root(), callBack); updated {
 			return tree.(RealTree).SetRoot(newRoot), true
@@ -383,14 +419,14 @@ func UpdateIterate(tree Tree, descOrder bool, callBack UpdateIteratorCallBack) (
 	}
 }
 
-func UpdateRange(tree Tree, descOrder bool, lower, upper Key, callBack ValueUpdaterCallBack) (modified Tree, ok bool) {
+func UpdateRange(tree Tree, descOrder bool, lower, upper Key, callBack UpdateValueCallBack) (modified Tree, ok bool) {
 	return UpdateRangeIterate(tree, descOrder, lower, upper, func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool) {
 		newValue, keepOldValue = callBack(key, oldValue)
 		return
 	})
 }
 
-func UpdateRangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack UpdateIteratorCallBack) (modified Tree, ok bool) {
+func UpdateRangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack UpdateIterateCallBack) (modified Tree, ok bool) {
 	if lower == nil && upper == nil {
 		return UpdateIterate(tree, descOrder, callBack)
 	}
@@ -895,7 +931,7 @@ func removeMax(root Node) (newRoot, removed Node) {
 	return newRoot, removed
 }
 
-func ascIterateNode(node Node, callBack NodeIteratorCallBack) (ok bool) {
+func ascIterateNode(node Node, callBack IterateCallBack) (ok bool) {
 	if node == nil {
 		return true
 	}
@@ -908,7 +944,7 @@ func ascIterateNode(node Node, callBack NodeIteratorCallBack) (ok bool) {
 	return ascIterateNode(node.RightChild(), callBack)
 }
 
-func descIterateNode(node Node, callBack NodeIteratorCallBack) (ok bool) {
+func descIterateNode(node Node, callBack IterateCallBack) (ok bool) {
 	if node == nil {
 		return true
 	}
@@ -1021,7 +1057,7 @@ func (checker *lowerBoundsChecker) includeUpper() bool {
 	return true
 }
 
-func ascRangeNode(node Node, bounds keyBounds, callBack NodeIteratorCallBack) (ok bool) {
+func ascRangeNode(node Node, bounds keyBounds, callBack IterateCallBack) (ok bool) {
 	if node == nil {
 		return true
 	}
@@ -1045,7 +1081,7 @@ func ascRangeNode(node Node, bounds keyBounds, callBack NodeIteratorCallBack) (o
 	}
 }
 
-func descRangeNode(node Node, bounds keyBounds, callBack NodeIteratorCallBack) (ok bool) {
+func descRangeNode(node Node, bounds keyBounds, callBack IterateCallBack) (ok bool) {
 	if node == nil {
 		return true
 	}
@@ -1069,7 +1105,7 @@ func descRangeNode(node Node, bounds keyBounds, callBack NodeIteratorCallBack) (
 	}
 }
 
-func updateValue(node Node, key Key, callBack ValueUpdaterCallBack) (newNode RealNode, ok bool) {
+func updateValue(node Node, key Key, callBack UpdateValueCallBack) (newNode RealNode, ok bool) {
 	if node == nil {
 		return nil, false
 	}
@@ -1099,7 +1135,7 @@ func updateValue(node Node, key Key, callBack ValueUpdaterCallBack) (newNode Rea
 	}
 }
 
-func ascUpdateIterate(root Node, callBack UpdateIteratorCallBack) (newRoot RealNode, updated, breakIteration bool) {
+func ascUpdateIterate(root Node, callBack UpdateIterateCallBack) (newRoot RealNode, updated, breakIteration bool) {
 	if root == nil {
 		return nil, false, false
 	}
@@ -1147,7 +1183,7 @@ func ascUpdateIterate(root Node, callBack UpdateIteratorCallBack) (newRoot RealN
 	return newRoot, updated, breakIteration
 }
 
-func descUpdateIterate(root Node, callBack UpdateIteratorCallBack) (newRoot RealNode, updated, breakIteration bool) {
+func descUpdateIterate(root Node, callBack UpdateIterateCallBack) (newRoot RealNode, updated, breakIteration bool) {
 	if root == nil {
 		return nil, false, false
 	}
@@ -1197,7 +1233,7 @@ func descUpdateIterate(root Node, callBack UpdateIteratorCallBack) (newRoot Real
 	return newRoot, updated, breakIteration
 }
 
-func ascUpdateRange(root Node, bounds keyBounds, callBack UpdateIteratorCallBack) (newRoot RealNode, updated, breakIteration bool) {
+func ascUpdateRange(root Node, bounds keyBounds, callBack UpdateIterateCallBack) (newRoot RealNode, updated, breakIteration bool) {
 	if root == nil {
 		return nil, false, false
 	}
@@ -1262,7 +1298,7 @@ func ascUpdateRange(root Node, bounds keyBounds, callBack UpdateIteratorCallBack
 	return newRoot, updated, breakIteration
 }
 
-func descUpdateRange(root Node, bounds keyBounds, callBack UpdateIteratorCallBack) (newRoot RealNode, updated, breakIteration bool) {
+func descUpdateRange(root Node, bounds keyBounds, callBack UpdateIterateCallBack) (newRoot RealNode, updated, breakIteration bool) {
 	if root == nil {
 		return nil, false, false
 	}
@@ -1327,7 +1363,7 @@ func descUpdateRange(root Node, bounds keyBounds, callBack UpdateIteratorCallBac
 	return newRoot, updated, breakIteration
 }
 
-func ascDeleteIterate(root Node, callBack DeleteIteratorCallBack) (newRoot Node, deleted []Node, breakIteration bool) {
+func ascDeleteIterate(root Node, callBack DeleteIterateCallBack) (newRoot Node, deleted []Node, breakIteration bool) {
 	if root == nil {
 		return nil, nil, false
 	}
@@ -1395,7 +1431,7 @@ func ascDeleteIterate(root Node, callBack DeleteIteratorCallBack) (newRoot Node,
 	return newRoot, deleted, breakIteration
 }
 
-func descDeleteIterate(root Node, callBack DeleteIteratorCallBack) (newRoot Node, deleted []Node, breakIteration bool) {
+func descDeleteIterate(root Node, callBack DeleteIterateCallBack) (newRoot Node, deleted []Node, breakIteration bool) {
 	if root == nil {
 		return nil, nil, false
 	}
@@ -1463,7 +1499,7 @@ func descDeleteIterate(root Node, callBack DeleteIteratorCallBack) (newRoot Node
 	return newRoot, deleted, breakIteration
 }
 
-func ascDeleteRange(root Node, bounds keyBounds, callBack DeleteIteratorCallBack) (newRoot Node, deleted []Node, breakIteration bool) {
+func ascDeleteRange(root Node, bounds keyBounds, callBack DeleteIterateCallBack) (newRoot Node, deleted []Node, breakIteration bool) {
 	if root == nil {
 		return nil, nil, false
 	}
@@ -1545,7 +1581,7 @@ func ascDeleteRange(root Node, bounds keyBounds, callBack DeleteIteratorCallBack
 	return newRoot, deleted, breakIteration
 }
 
-func descDeleteRange(root Node, bounds keyBounds, callBack DeleteIteratorCallBack) (newRoot Node, deleted []Node, breakIteration bool) {
+func descDeleteRange(root Node, bounds keyBounds, callBack DeleteIterateCallBack) (newRoot Node, deleted []Node, breakIteration bool) {
 	if root == nil {
 		return nil, nil, false
 	}
@@ -1624,4 +1660,108 @@ func descDeleteRange(root Node, bounds keyBounds, callBack DeleteIteratorCallBac
 		newRoot = rotate(newRoot.(RealNode))
 	}
 	return newRoot, deleted, breakIteration
+}
+
+func (aNode *alterNode) Node() Node {
+	return aNode.node
+}
+
+func (aNode *alterNode) Key() Key {
+	return aNode.node.Key()
+}
+
+func (aNode *alterNode) Value() interface{} {
+	return aNode.node.Value()
+}
+
+func (*alterNode) Keep() (request AlterRequest) {
+	return
+}
+
+func (*alterNode) Replace(newValue interface{}) (request AlterRequest) {
+	request.replaceValue = true
+	request.newValue = newValue
+	return
+}
+
+func (*alterNode) Delete() (request AlterRequest) {
+	request.deleteNode = true
+	return
+}
+
+func (request *AlterRequest) Keep() (ret AlterRequest) {
+	*request = ret
+	return
+}
+
+func (request *AlterRequest) Replace(newValue interface{}) (ret AlterRequest) {
+	ret.replaceValue = true
+	ret.newValue = newValue
+	*request = ret
+	return
+}
+
+func (request *AlterRequest) Delete() (ret AlterRequest) {
+	ret.deleteNode = true
+	*request = ret
+	return
+}
+
+func (request *AlterRequest) isKeepRequest() bool {
+	return !request.replaceValue && !request.deleteNode
+}
+
+func (request *AlterRequest) isReplaceRequest() bool {
+	return request.replaceValue && !request.deleteNode
+}
+
+func (request *AlterRequest) isDeleteRequest() bool {
+	return !request.replaceValue && request.deleteNode
+}
+
+func alter(node Node, key Key, callBack AlterNodeCallBack) (newNode, deleted Node, ok bool) {
+	if node == nil {
+		// nodeの返却は必要か？
+		return node, nil, false
+	}
+	cmp := key.CompareTo(node.Key())
+	switch {
+	case cmp.LessThan():
+		if newLeftChild, deleted, ok := alter(node.LeftChild(), key, callBack); ok {
+			newNode = rotate(setLeftChild(node.(RealNode), newLeftChild))
+			return newNode, deleted, ok
+		} else {
+			return node, nil, false
+		}
+	case cmp.GreaterThan():
+		if newRightChild, deleted, ok := alter(node.RightChild(), key, callBack); ok {
+			newNode = rotate(setRightChild(node.(RealNode), newRightChild))
+			return newNode, deleted, ok
+		} else {
+			return node, nil, false
+		}
+	}
+	request := callBack(&alterNode{node})
+	switch {
+	case request.isKeepRequest():
+		return node, nil, false
+	case request.isReplaceRequest():
+		newNode = node.SetValue(request.newValue)
+		return newNode, nil, true
+	case request.isDeleteRequest():
+		deleted = node
+		leftChild := node.LeftChild()
+		rightChild := node.RightChild()
+		if compareNodeHeight(leftChild, rightChild) == leftIsHigher {
+			leftChild, newNode = removeMax(leftChild)
+		} else {
+			rightChild, newNode = removeMin(rightChild)
+		}
+		if newNode != nil {
+			newNode = rotate(setChildren(newNode.(RealNode), leftChild, rightChild))
+		}
+		return newNode, deleted, true
+	default:
+		panic("unreachable")
+	}
 }

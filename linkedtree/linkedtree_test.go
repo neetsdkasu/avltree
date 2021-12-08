@@ -3403,3 +3403,67 @@ func TestDescDeleteRangeIterateHeight(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestAlter(t *testing.T) {
+
+	f := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		tree := New(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		values := []int{}
+		for _, kv := range list {
+			_, delvalue, _ := avltree.Alter(tree, IntKey(kv.Key), func(node avltree.AlterNode) (request avltree.AlterRequest) {
+				value := node.Value().(int)
+				switch value & 3 {
+				case 0, 3:
+					return node.Keep()
+				case 1:
+					return node.Replace(value >> 1)
+				case 2:
+					return node.Delete()
+				}
+				return
+			})
+			if delvalue != nil {
+				values = append(values, delvalue.(int))
+			}
+		}
+		result := []int{}
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		sort.Ints(values)
+		result = append(result, values...)
+		return result
+	}
+
+	g := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		result := []int{}
+		deleted := []int{}
+		for _, kv := range list {
+			switch kv.Value & 3 {
+			case 0, 3:
+				result = append(result, kv.Key, kv.Value)
+			case 1:
+				result = append(result, kv.Key, kv.Value>>1)
+			case 2:
+				deleted = append(deleted, kv.Value)
+			}
+		}
+		sort.Ints(deleted)
+		result = append(result, deleted...)
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
