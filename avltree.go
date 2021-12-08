@@ -5,7 +5,7 @@ import "strings"
 type NodeIteratorCallBack = func(node Node) (breakIteration bool)
 type ValueUpdaterCallBack = func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue bool)
 type UpdateIteratorCallBack = func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool)
-type DeleteIteratorCallBack = func(key Key, oldValue interface{}) (deleteNode, breakIteration bool)
+type DeleteIteratorCallBack = func(key Key, value interface{}) (deleteNode, breakIteration bool)
 
 type NodeCounter interface{ NodeCount() int }
 type NodeReleaser interface{ ReleaseNode(node RealNode) }
@@ -220,16 +220,12 @@ func Max(tree Tree) (maximum Node, ok bool) {
 	return node, true
 }
 
-func DeleteAll(tree Tree, key Key) (modified Tree, values []interface{}, ok bool) {
-	// ひとまず雑実装
-	for {
-		var value interface{}
-		tree, value, ok = Delete(tree, key)
-		if !ok {
-			return tree, values, 0 < len(values)
-		}
-		values = append(values, value)
+func DeleteAll(tree Tree, key Key) (modified Tree, values []interface{}) {
+	tree, keyAndValues := DeleteRange(tree, false, key, key)
+	for _, kv := range keyAndValues {
+		values = append(values, kv.Value())
 	}
+	return tree, values
 }
 
 func UpdateAll(tree Tree, key Key, callBack ValueUpdaterCallBack) (modified Tree, ok bool) {
@@ -313,6 +309,44 @@ func DeleteIterate(tree Tree, descOrder bool, callBack DeleteIteratorCallBack) (
 		newRoot, deleted, _ = descDeleteIterate(tree.Root(), callBack)
 	} else {
 		newRoot, deleted, _ = ascDeleteIterate(tree.Root(), callBack)
+	}
+	if len(deleted) == 0 {
+		return tree, nil
+	}
+	for _, node := range deleted {
+		values = append(values, &keyAndValue{
+			node.Key(),
+			node.Value(),
+		})
+		if releaser, ok := tree.(NodeReleaser); ok {
+			releaser.ReleaseNode(node.(RealNode))
+		}
+	}
+	if root, ok := newRoot.(RealNode); ok {
+		return tree.(RealTree).SetRoot(root), values
+	} else {
+		return tree.(RealTree).SetRoot(nil), values
+	}
+}
+
+func DeleteRange(tree Tree, descOrder bool, lower, upper Key) (modified Tree, values []KeyAndValue) {
+	return DeleteRangeIterate(tree, descOrder, lower, upper, func(key Key, value interface{}) (deleteNode, breakIteration bool) {
+		deleteNode = true
+		return
+	})
+}
+
+func DeleteRangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack DeleteIteratorCallBack) (modified Tree, values []KeyAndValue) {
+	if lower == nil && upper == nil {
+		return DeleteIterate(tree, descOrder, callBack)
+	}
+	var newRoot Node
+	var deleted []Node
+	bounds := newKeyBounds(lower, upper, tree.(RealTree).AllowDuplicateKeys())
+	if descOrder {
+		newRoot, deleted, _ = descDeleteRange(tree.Root(), bounds, callBack)
+	} else {
+		newRoot, deleted, _ = ascDeleteRange(tree.Root(), bounds, callBack)
 	}
 	if len(deleted) == 0 {
 		return tree, nil
@@ -1402,6 +1436,169 @@ func descDeleteIterate(root Node, callBack DeleteIteratorCallBack) (newRoot Node
 	}
 
 	leftChild, leftDeleted, breakIteration := descDeleteIterate(root.LeftChild(), callBack)
+
+	deleted = rightDeleted
+	switch {
+	case len(leftDeleted) == 0 && !deleteRoot && len(rightDeleted) == 0:
+		newRoot = root
+	case !deleteRoot:
+		newRoot = setChildren(root.(RealNode), leftChild, rightChild)
+	case deleteRoot:
+		deleted = append(deleted, root)
+		if compareNodeHeight(leftChild, rightChild) == leftIsHigher {
+			leftChild, newRoot = removeMax(leftChild)
+		} else {
+			rightChild, newRoot = removeMin(rightChild)
+		}
+		if newRoot != nil {
+			newRoot = setChildren(newRoot.(RealNode), leftChild, rightChild)
+		}
+	default:
+		panic("unreachable")
+	}
+	deleted = append(deleted, leftDeleted...)
+	if newRoot != nil {
+		newRoot = rotate(newRoot.(RealNode))
+	}
+	return newRoot, deleted, breakIteration
+}
+
+func ascDeleteRange(root Node, bounds keyBounds, callBack DeleteIteratorCallBack) (newRoot Node, deleted []Node, breakIteration bool) {
+	if root == nil {
+		return nil, nil, false
+	}
+	var deleteRoot bool
+	var leftDeleted, rightDeleted []Node
+	leftChild := root.LeftChild()
+	rightChild := root.RightChild()
+	key := root.Key()
+
+	lower := bounds.checkLower(key)
+	if lower.includeLower() {
+		leftChild, leftDeleted, breakIteration = ascDeleteRange(leftChild, bounds, callBack)
+		if breakIteration {
+			if len(leftDeleted) > 0 {
+				newRoot = setLeftChild(root.(RealNode), leftChild)
+			} else {
+				newRoot = root
+			}
+			newRoot = rotate(newRoot.(RealNode))
+			return newRoot, leftDeleted, breakIteration
+		}
+	}
+
+	upper := bounds.checkUpper(key)
+	if lower.includeKey() && upper.includeKey() {
+		deleteRoot, breakIteration = callBack(root.Key(), root.Value())
+		if breakIteration {
+			deleted = leftDeleted
+			if deleteRoot {
+				deleted = append(deleted, root)
+				rightChild := root.RightChild()
+				if compareNodeHeight(leftChild, rightChild) == leftIsHigher {
+					leftChild, newRoot = removeMax(leftChild)
+				} else {
+					rightChild, newRoot = removeMin(rightChild)
+				}
+				if newRoot != nil {
+					newRoot = setChildren(newRoot.(RealNode), leftChild, rightChild)
+				}
+			} else if len(leftDeleted) > 0 {
+				newRoot = setLeftChild(root.(RealNode), leftChild)
+			} else {
+				newRoot = root
+			}
+			if newRoot != nil {
+				newRoot = rotate(newRoot.(RealNode))
+			}
+			return newRoot, deleted, breakIteration
+		}
+	}
+
+	if upper.includeUpper() {
+		rightChild, rightDeleted, breakIteration = ascDeleteRange(rightChild, bounds, callBack)
+	}
+
+	deleted = leftDeleted
+	switch {
+	case len(leftDeleted) == 0 && !deleteRoot && len(rightDeleted) == 0:
+		newRoot = root
+	case !deleteRoot:
+		newRoot = setChildren(root.(RealNode), leftChild, rightChild)
+	case deleteRoot:
+		deleted = append(deleted, root)
+		if compareNodeHeight(leftChild, rightChild) == leftIsHigher {
+			leftChild, newRoot = removeMax(leftChild)
+		} else {
+			rightChild, newRoot = removeMin(rightChild)
+		}
+		if newRoot != nil {
+			newRoot = setChildren(newRoot.(RealNode), leftChild, rightChild)
+		}
+	default:
+		panic("unreachable")
+	}
+	deleted = append(deleted, rightDeleted...)
+	if newRoot != nil {
+		newRoot = rotate(newRoot.(RealNode))
+	}
+	return newRoot, deleted, breakIteration
+}
+
+func descDeleteRange(root Node, bounds keyBounds, callBack DeleteIteratorCallBack) (newRoot Node, deleted []Node, breakIteration bool) {
+	if root == nil {
+		return nil, nil, false
+	}
+	var deleteRoot bool
+	var leftDeleted, rightDeleted []Node
+	leftChild := root.LeftChild()
+	rightChild := root.RightChild()
+	key := root.Key()
+
+	upper := bounds.checkUpper(key)
+	if upper.includeUpper() {
+		rightChild, rightDeleted, breakIteration = descDeleteRange(rightChild, bounds, callBack)
+		if breakIteration {
+			if len(rightDeleted) > 0 {
+				newRoot = setRightChild(root.(RealNode), rightChild)
+			} else {
+				newRoot = root
+			}
+			return rotate(newRoot.(RealNode)), rightDeleted, breakIteration
+		}
+	}
+
+	lower := bounds.checkLower(key)
+	if lower.includeKey() && upper.includeKey() {
+		deleteRoot, breakIteration = callBack(root.Key(), root.Value())
+		if breakIteration {
+			deleted = rightDeleted
+			if deleteRoot {
+				deleted = append(deleted, root)
+				leftChild := root.LeftChild()
+				if compareNodeHeight(leftChild, rightChild) == leftIsHigher {
+					leftChild, newRoot = removeMax(leftChild)
+				} else {
+					rightChild, newRoot = removeMin(rightChild)
+				}
+				if newRoot != nil {
+					newRoot = setChildren(newRoot.(RealNode), leftChild, rightChild)
+				}
+			} else if len(rightDeleted) > 0 {
+				newRoot = setRightChild(root.(RealNode), rightChild)
+			} else {
+				newRoot = root
+			}
+			if newRoot != nil {
+				newRoot = rotate(newRoot.(RealNode))
+			}
+			return newRoot, deleted, breakIteration
+		}
+	}
+
+	if lower.includeLower() {
+		leftChild, leftDeleted, breakIteration = descDeleteRange(leftChild, bounds, callBack)
+	}
 
 	deleted = rightDeleted
 	switch {

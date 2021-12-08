@@ -2547,9 +2547,8 @@ func TestAscDeleteIterate(t *testing.T) {
 		for _, kv := range list {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
-		_, values := avltree.DeleteIterate(tree, false, func(key Key, oldValue interface{}) (deleteNode, breakIteration bool) {
-			value := oldValue.(int)
-			deleteNode = value < 0
+		_, values := avltree.DeleteIterate(tree, false, func(key Key, value interface{}) (deleteNode, breakIteration bool) {
+			deleteNode = value.(int) < 0
 			return
 		})
 		result := []int{}
@@ -2598,9 +2597,8 @@ func TestAscHalfDeleteIterate(t *testing.T) {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
 		count := (len(list) + 1) / 2
-		_, values := avltree.DeleteIterate(tree, false, func(key Key, oldValue interface{}) (deleteNode, breakIteration bool) {
-			value := oldValue.(int)
-			deleteNode = value < 0
+		_, values := avltree.DeleteIterate(tree, false, func(key Key, value interface{}) (deleteNode, breakIteration bool) {
+			deleteNode = value.(int) < 0
 			count--
 			breakIteration = count <= 0
 			return
@@ -2651,9 +2649,8 @@ func TestDescDeleteIterate(t *testing.T) {
 		for _, kv := range list {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
-		_, values := avltree.DeleteIterate(tree, true, func(key Key, oldValue interface{}) (deleteNode, breakIteration bool) {
-			value := oldValue.(int)
-			deleteNode = value < 0
+		_, values := avltree.DeleteIterate(tree, true, func(key Key, value interface{}) (deleteNode, breakIteration bool) {
+			deleteNode = value.(int) < 0
 			return
 		})
 		result := []int{}
@@ -2703,9 +2700,8 @@ func TestDescHalfDeleteIterate(t *testing.T) {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
 		count := (len(list) + 1) / 2
-		_, values := avltree.DeleteIterate(tree, true, func(key Key, oldValue interface{}) (deleteNode, breakIteration bool) {
-			value := oldValue.(int)
-			deleteNode = value < 0
+		_, values := avltree.DeleteIterate(tree, true, func(key Key, value interface{}) (deleteNode, breakIteration bool) {
+			deleteNode = value.(int) < 0
 			count--
 			breakIteration = count <= 0
 			return
@@ -2807,9 +2803,8 @@ func TestDescDeleteIterateHeight(t *testing.T) {
 		for _, kv := range list {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
-		avltree.DeleteIterate(tree, true, func(key Key, oldValue interface{}) (deleteNode, breakIteration bool) {
-			value := oldValue.(int)
-			deleteNode = value < 0
+		avltree.DeleteIterate(tree, true, func(key Key, value interface{}) (deleteNode, breakIteration bool) {
+			deleteNode = value.(int) < 0
 			return
 		})
 		var invalidNode Node
@@ -2844,6 +2839,567 @@ func TestDescDeleteIterateHeight(t *testing.T) {
 	}
 
 	if err := quick.CheckEqual(f, g, cfg1000); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAscDeleteIterateBalance(t *testing.T) {
+
+	f := func(listBase []keyAndValue) avltree.Node {
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		avltree.DeleteIterate(tree, false, func(key Key, oldValue interface{}) (deleteNode, breakIteration bool) {
+			value := oldValue.(int)
+			deleteNode = value < 0
+			return
+		})
+		var invalidNode Node
+		avltree.Iterate(tree, false, func(node avltree.Node) (breakIteration bool) {
+			key := int(node.Key().(IntKey))
+			if lChild := node.LeftChild(); lChild != nil {
+				lKey := int(lChild.Key().(IntKey))
+				if key <= lKey {
+					invalidNode = node
+					breakIteration = true
+				}
+			}
+			if rChild := node.RightChild(); rChild != nil {
+				rKey := int(rChild.Key().(IntKey))
+				if rKey <= key {
+					invalidNode = node
+					breakIteration = true
+				}
+			}
+			return
+		})
+		return invalidNode
+	}
+
+	g := func(listBase []keyAndValue) avltree.Node {
+		return nil
+	}
+
+	if err := quick.CheckEqual(f, g, cfg1000); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDescDeleteIterateBalance(t *testing.T) {
+
+	f := func(listBase []keyAndValue) avltree.Node {
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		avltree.DeleteIterate(tree, true, func(key Key, oldValue interface{}) (deleteNode, breakIteration bool) {
+			value := oldValue.(int)
+			deleteNode = value < 0
+			return
+		})
+		var invalidNode Node
+		avltree.Iterate(tree, false, func(node avltree.Node) (breakIteration bool) {
+			key := int(node.Key().(IntKey))
+			if lChild := node.LeftChild(); lChild != nil {
+				lKey := int(lChild.Key().(IntKey))
+				if key <= lKey {
+					invalidNode = node
+					breakIteration = true
+				}
+			}
+			if rChild := node.RightChild(); rChild != nil {
+				rKey := int(rChild.Key().(IntKey))
+				if rKey <= key {
+					invalidNode = node
+					breakIteration = true
+				}
+			}
+			return
+		})
+		return invalidNode
+	}
+
+	g := func(listBase []keyAndValue) avltree.Node {
+		return nil
+	}
+
+	if err := quick.CheckEqual(f, g, cfg1000); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAscDeleteRangeIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		lower := IntKey(k1)
+		upper := IntKey(k2)
+		_, values := avltree.DeleteRangeIterate(tree, false, lower, upper, func(key Key, value interface{}) (deleteNode, breakIteration bool) {
+			deleteNode = value.(int) < 0
+			return
+		})
+		result := []int{}
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		for _, v := range values {
+			result = append(result, int(v.Key().(IntKey)))
+			result = append(result, v.Value().(int))
+		}
+		return result
+	}
+
+	g := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		result := []int{}
+		deleted := []int{}
+		for _, kv := range list {
+			if kv.Key < k1 || k2 < kv.Key || kv.Value >= 0 {
+				result = append(result, kv.Key)
+				result = append(result, kv.Value)
+			} else {
+				deleted = append(deleted, kv.Key)
+				deleted = append(deleted, kv.Value)
+			}
+		}
+		result = append(result, deleted...)
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAscHalfDeleteRangeIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		count := (len(list) + 1) / 2
+		lower := IntKey(k1)
+		upper := IntKey(k2)
+		_, values := avltree.DeleteRangeIterate(tree, false, lower, upper, func(key Key, value interface{}) (deleteNode, breakIteration bool) {
+			deleteNode = value.(int) < 0
+			count--
+			breakIteration = count <= 0
+			return
+		})
+		result := []int{}
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		for _, v := range values {
+			result = append(result, int(v.Key().(IntKey)))
+			result = append(result, v.Value().(int))
+		}
+		return result
+	}
+
+	g := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		count := (len(list) + 1) / 2
+		result := []int{}
+		deleted := []int{}
+		for _, kv := range list {
+			if kv.Key < k1 || k2 < kv.Key || kv.Value >= 0 || count <= 0 {
+				result = append(result, kv.Key)
+				result = append(result, kv.Value)
+			} else {
+				deleted = append(deleted, kv.Key)
+				deleted = append(deleted, kv.Value)
+			}
+			if k1 <= kv.Key && kv.Key <= k2 {
+				count--
+			}
+		}
+		result = append(result, deleted...)
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDescDeleteRangeIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		lower := IntKey(k1)
+		upper := IntKey(k2)
+		_, values := avltree.DeleteRangeIterate(tree, true, lower, upper, func(key Key, value interface{}) (deleteNode, breakIteration bool) {
+			deleteNode = value.(int) < 0
+			return
+		})
+		result := []int{}
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		for _, v := range values {
+			result = append(result, int(v.Key().(IntKey)))
+			result = append(result, v.Value().(int))
+		}
+		return result
+	}
+
+	g := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		result := []int{}
+		deleted := []int{}
+		for _, kv := range list {
+			if kv.Key < k1 || k2 < kv.Key || kv.Value >= 0 {
+				result = append(result, kv.Key)
+				result = append(result, kv.Value)
+			} else {
+				deleted = append(deleted, kv.Value)
+				deleted = append(deleted, kv.Key)
+			}
+		}
+		for i := range deleted {
+			result = append(result, deleted[len(deleted)-1-i])
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDescHalfDeleteRangeIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		count := (len(list) + 1) / 2
+		lower := IntKey(k1)
+		upper := IntKey(k2)
+		_, values := avltree.DeleteRangeIterate(tree, true, lower, upper, func(key Key, value interface{}) (deleteNode, breakIteration bool) {
+			deleteNode = value.(int) < 0
+			count--
+			breakIteration = count <= 0
+			return
+		})
+		result := []int{}
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		for _, v := range values {
+			result = append(result, int(v.Key().(IntKey)))
+			result = append(result, v.Value().(int))
+		}
+		return result
+	}
+
+	g := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		count := -(len(list) + 1) / 2
+		for _, kv := range list {
+			if k1 <= kv.Key && kv.Key <= k2 {
+				count++
+			}
+		}
+		result := []int{}
+		deleted := []int{}
+		for _, kv := range list {
+			if kv.Key < k1 || k2 < kv.Key || kv.Value >= 0 || count > 0 {
+				result = append(result, kv.Key)
+				result = append(result, kv.Value)
+			} else {
+				deleted = append(deleted, kv.Value)
+				deleted = append(deleted, kv.Key)
+			}
+			if k1 <= kv.Key && kv.Key <= k2 {
+				count--
+			}
+		}
+		for i := range deleted {
+			result = append(result, deleted[len(deleted)-1-i])
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAscDeleteRange(t *testing.T) {
+
+	f := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		lower := IntKey(k1)
+		upper := IntKey(k2)
+		_, values := avltree.DeleteRange(tree, false, lower, upper)
+		result := []int{}
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		for _, v := range values {
+			result = append(result, int(v.Key().(IntKey)))
+			result = append(result, v.Value().(int))
+		}
+		return result
+	}
+
+	g := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		result := []int{}
+		deleted := []int{}
+		for _, kv := range list {
+			if kv.Key < k1 || k2 < kv.Key {
+				result = append(result, kv.Key)
+				result = append(result, kv.Value)
+			} else {
+				deleted = append(deleted, kv.Key)
+				deleted = append(deleted, kv.Value)
+			}
+		}
+		result = append(result, deleted...)
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDescDeleteRange(t *testing.T) {
+
+	f := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		lower := IntKey(k1)
+		upper := IntKey(k2)
+		_, values := avltree.DeleteRange(tree, true, lower, upper)
+		result := []int{}
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			result = append(result, int(node.Key().(IntKey)))
+			result = append(result, node.Value().(int))
+			return
+		})
+		for _, v := range values {
+			result = append(result, int(v.Key().(IntKey)))
+			result = append(result, v.Value().(int))
+		}
+		return result
+	}
+
+	g := func(listBase []keyAndValue, k1, k2 int) []int {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Key < list[j].Key
+		})
+		result := []int{}
+		deleted := []int{}
+		for _, kv := range list {
+			if kv.Key < k1 || k2 < kv.Key {
+				result = append(result, kv.Key)
+				result = append(result, kv.Value)
+			} else {
+				deleted = append(deleted, kv.Value)
+				deleted = append(deleted, kv.Key)
+			}
+		}
+		for i := range deleted {
+			result = append(result, deleted[len(deleted)-1-i])
+		}
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAscDeleteRangeIterateHeight(t *testing.T) {
+
+	f := func(listBase []keyAndValue, k1, k2 int) avltree.Node {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		lower := IntKey(k1)
+		upper := IntKey(k2)
+		avltree.DeleteRangeIterate(tree, false, lower, upper, func(key Key, value interface{}) (deleteNode, breakIteration bool) {
+			deleteNode = value.(int) < 0
+			return
+		})
+		var invalidNode avltree.Node
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			height := node.(avltree.RealNode).Height()
+			var hLeft, hRight int
+			if lChild, ok := node.LeftChild().(avltree.RealNode); ok {
+				hLeft = lChild.Height()
+			}
+			if rChild, ok := node.RightChild().(avltree.RealNode); ok {
+				hRight = rChild.Height()
+			}
+			hMin, hMax := hLeft, hRight
+			if hMax < hMin {
+				hMin, hMax = hMax, hMin
+			}
+			if 1 < hMax-hMin {
+				invalidNode = node
+				breakIteration = true
+			}
+			if height-hMax != 1 {
+				invalidNode = node
+				breakIteration = true
+			}
+			return
+		})
+		return invalidNode
+	}
+
+	g := func(listBase []keyAndValue, k1, k2 int) avltree.Node {
+		return nil
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDescDeleteRangeIterateHeight(t *testing.T) {
+
+	f := func(listBase []keyAndValue, k1, k2 int) avltree.Node {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		list := omitDuplicates(listBase)
+		tree := NewLinkedTree(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		lower := IntKey(k1)
+		upper := IntKey(k2)
+		avltree.DeleteRangeIterate(tree, true, lower, upper, func(key Key, value interface{}) (deleteNode, breakIteration bool) {
+			deleteNode = value.(int) < 0
+			return
+		})
+		var invalidNode avltree.Node
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			height := node.(avltree.RealNode).Height()
+			var hLeft, hRight int
+			if lChild, ok := node.LeftChild().(avltree.RealNode); ok {
+				hLeft = lChild.Height()
+			}
+			if rChild, ok := node.RightChild().(avltree.RealNode); ok {
+				hRight = rChild.Height()
+			}
+			hMin, hMax := hLeft, hRight
+			if hMax < hMin {
+				hMin, hMax = hMax, hMin
+			}
+			if 1 < hMax-hMin {
+				invalidNode = node
+				breakIteration = true
+			}
+			if height-hMax != 1 {
+				invalidNode = node
+				breakIteration = true
+			}
+			return
+		})
+		return invalidNode
+	}
+
+	g := func(listBase []keyAndValue, k1, k2 int) avltree.Node {
+		return nil
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
 		t.Fatal(err)
 	}
 }
