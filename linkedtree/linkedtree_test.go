@@ -3418,11 +3418,23 @@ func TestAlter(t *testing.T) {
 				value := node.Value().(int)
 				switch value & 3 {
 				case 0, 3:
-					return node.Keep()
+					if value < 0 {
+						return node.Keep()
+					} else {
+						request.Keep()
+					}
 				case 1:
-					return node.Replace(value >> 1)
+					if value < 0 {
+						return node.Replace(value >> 1)
+					} else {
+						request.Replace(value >> 1)
+					}
 				case 2:
-					return node.Delete()
+					if value < 0 {
+						return node.Delete()
+					} else {
+						request.Delete()
+					}
 				}
 				return
 			})
