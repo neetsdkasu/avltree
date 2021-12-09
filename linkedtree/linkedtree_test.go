@@ -96,11 +96,24 @@ func toKeyValueInts(list interface{}) (result []int) {
 	return
 }
 
+func ascIterateNode(node Node, callBack func(n Node)) {
+	if node != nil {
+		ascIterateNode(node.LeftChild(), callBack)
+		callBack(node)
+		ascIterateNode(node.RightChild(), callBack)
+	}
+}
+
 func getAllAscKeyAndValues(tree Tree) (result []int) {
-	avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+	// avltree.Iterateに頼らない方法のほうがいいかも？
+	//	avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+	//		result = append(result, int(node.Key().(IntKey)))
+	//		result = append(result, node.Value().(int))
+	//		return
+	//	})
+	ascIterateNode(tree.Root(), func(node Node) {
 		result = append(result, int(node.Key().(IntKey)))
 		result = append(result, node.Value().(int))
-		return
 	})
 	return
 }
@@ -124,15 +137,34 @@ func checkHeight(node Node) (ok bool) {
 	return hMax-hMin <= 1 && height-hMax == 1
 }
 
-func takeInvalidHeightNode(tree Tree) (invalidNode Node) {
-	avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
-		if !checkHeight(node) {
-			invalidNode = node
-			breakIteration = true
+func takeInvalidNode(tree Tree, check func(node Node) bool) (invalidNode Node) {
+	stack := []Node{tree.Root()}
+	for len(stack) > 0 {
+		newsize := len(stack) - 1
+		node := stack[newsize]
+		stack = stack[:newsize]
+		if node == nil {
+			continue
 		}
-		return
-	})
+		if !check(node) {
+			invalidNode = node
+			return
+		}
+		stack = append(stack, node.RightChild(), node.LeftChild())
+	}
 	return
+}
+
+func takeInvalidHeightNode(tree Tree) (invalidNode Node) {
+	// avltree.Iterateに頼らない方法のほうがいいかも？
+	//	avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+	//		if !checkHeight(node) {
+	//			invalidNode = node
+	//			breakIteration = true
+	//		}
+	//		return
+	//	})
+	return takeInvalidNode(tree, checkHeight)
 }
 
 func checkBalance(node Node) bool {
@@ -156,14 +188,15 @@ func checkBalance(node Node) bool {
 }
 
 func takeInvalidBalanceNode(tree Tree) (invalidNode Node) {
-	avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
-		if !checkBalance(node) {
-			invalidNode = node
-			breakIteration = true
-		}
-		return
-	})
-	return
+	// avltree.Iterateに頼らない方法のほうがいいかも？
+	//	avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+	//		if !checkBalance(node) {
+	//			invalidNode = node
+	//			breakIteration = true
+	//		}
+	//		return
+	//	})
+	return takeInvalidNode(tree, checkBalance)
 }
 
 func TestInsertOneEntry(t *testing.T) {
