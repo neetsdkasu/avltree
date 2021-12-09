@@ -440,36 +440,27 @@ func TestParent(t *testing.T) {
 				return root
 			}
 		}
-		var invalidNode Node = nil
-		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+		invalidNode := takeInvalidNode(tree, func(node Node) (ok bool) {
 			if parent := node.(avltree.ParentGetter).Parent(); parent != nil {
 				leftChild := parent.LeftChild()
 				rightChild := parent.RightChild()
 				if leftChild != node && rightChild != node {
-					invalidNode = node
-					breakIteration = true
-					return
+					return false
 				}
 			} else if tree.Root() != node {
-				invalidNode = node
-				breakIteration = true
-				return
+				return false
 			}
 			if leftChild, ok := node.LeftChild().(avltree.ParentGetter); ok {
 				if node != leftChild.Parent() {
-					invalidNode = leftChild
-					breakIteration = true
-					return
+					return false
 				}
 			}
 			if rightChild, ok := node.RightChild().(avltree.ParentGetter); ok {
 				if node != rightChild.Parent() {
-					invalidNode = rightChild
-					breakIteration = true
-					return
+					return false
 				}
 			}
-			return
+			return true
 		})
 		return invalidNode
 	}
