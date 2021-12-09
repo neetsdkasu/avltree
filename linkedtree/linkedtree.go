@@ -2,14 +2,6 @@ package linkedtree
 
 import "avltree"
 
-type (
-	Key      = avltree.Key
-	Node     = avltree.Node
-	RealNode = avltree.RealNode
-	Tree     = avltree.Tree
-	RealTree = avltree.RealTree
-)
-
 type LinkedTree struct {
 	RootNode                *LinkedTreeNode
 	AllowDuplicateKeysValue bool
@@ -21,11 +13,11 @@ type LinkedTreeNode struct {
 	HeightValue    int
 	ParentNode     *LinkedTreeNode
 	NodeCountValue int
-	KeyData        Key
+	KeyData        avltree.Key
 	ValueData      interface{}
 }
 
-func unwrap(node Node) *LinkedTreeNode {
+func unwrap(node avltree.Node) *LinkedTreeNode {
 	if ltNode, ok := node.(*LinkedTreeNode); ok {
 		return ltNode
 	} else {
@@ -33,7 +25,7 @@ func unwrap(node Node) *LinkedTreeNode {
 	}
 }
 
-func (node *LinkedTreeNode) toNode() Node {
+func (node *LinkedTreeNode) toNode() avltree.Node {
 	if node == nil {
 		return nil
 	} else {
@@ -41,9 +33,9 @@ func (node *LinkedTreeNode) toNode() Node {
 	}
 }
 
-func New(allowDuplicateKeys bool) Tree {
+func New(allowDuplicateKeys bool) avltree.Tree {
 	return &LinkedTree{
-		nil, // root
+		nil, // RootNode
 		allowDuplicateKeys,
 	}
 }
@@ -52,13 +44,19 @@ func (tree *LinkedTree) NodeCount() int {
 	return tree.RootNode.NodeCount()
 }
 
-func (tree *LinkedTree) NewNode(leftChild, rightChild Node, height int, key Key, value interface{}) RealNode {
+func (tree *LinkedTree) NewNode(
+	leftChild,
+	rightChild avltree.Node,
+	height int,
+	key avltree.Key,
+	value interface{},
+) avltree.RealNode {
 	node := &LinkedTreeNode{
 		unwrap(leftChild),
 		unwrap(rightChild),
 		height,
-		nil, // parent
-		1,   // nodeCount
+		nil, // ParentNode
+		1,   // NodeCountValue
 		key,
 		value,
 	}
@@ -66,11 +64,11 @@ func (tree *LinkedTree) NewNode(leftChild, rightChild Node, height int, key Key,
 	return node
 }
 
-func (tree *LinkedTree) Root() Node {
+func (tree *LinkedTree) Root() avltree.Node {
 	return tree.RootNode.toNode()
 }
 
-func (tree *LinkedTree) SetRoot(newRoot RealNode) RealTree {
+func (tree *LinkedTree) SetRoot(newRoot avltree.RealNode) avltree.RealTree {
 	tree.RootNode = unwrap(newRoot)
 	tree.RootNode.setParent(nil)
 	return tree
@@ -80,7 +78,7 @@ func (tree *LinkedTree) AllowDuplicateKeys() bool {
 	return tree.AllowDuplicateKeysValue
 }
 
-func (node *LinkedTreeNode) Key() Key {
+func (node *LinkedTreeNode) Key() avltree.Key {
 	return node.KeyData
 }
 
@@ -92,20 +90,20 @@ func (node *LinkedTreeNode) Height() int {
 	return node.HeightValue
 }
 
-func (node *LinkedTreeNode) LeftChild() Node {
+func (node *LinkedTreeNode) LeftChild() avltree.Node {
 	return node.LeftChildNode.toNode()
 }
 
-func (node *LinkedTreeNode) RightChild() Node {
+func (node *LinkedTreeNode) RightChild() avltree.Node {
 	return node.RightChildNode.toNode()
 }
 
-func (node *LinkedTreeNode) SetValue(newValue interface{}) Node {
+func (node *LinkedTreeNode) SetValue(newValue interface{}) avltree.Node {
 	node.ValueData = newValue
 	return node
 }
 
-func (node *LinkedTreeNode) Parent() Node {
+func (node *LinkedTreeNode) Parent() avltree.Node {
 	if node == nil {
 		return nil
 	} else {
@@ -113,7 +111,7 @@ func (node *LinkedTreeNode) Parent() Node {
 	}
 }
 
-func (node *LinkedTreeNode) setParent(newParent Node) {
+func (node *LinkedTreeNode) setParent(newParent avltree.Node) {
 	if node != nil {
 		node.ParentNode = unwrap(newParent)
 	}
@@ -128,10 +126,16 @@ func (node *LinkedTreeNode) NodeCount() int {
 }
 
 func (node *LinkedTreeNode) resetNodeCount() {
-	node.NodeCountValue = 1 + node.LeftChildNode.NodeCount() + node.RightChildNode.NodeCount()
+	node.NodeCountValue = 1 +
+		node.LeftChildNode.NodeCount() +
+		node.RightChildNode.NodeCount()
 }
 
-func (node *LinkedTreeNode) SetChildren(newLeftChild, newRightChild Node, newHeight int) RealNode {
+func (node *LinkedTreeNode) SetChildren(
+	newLeftChild,
+	newRightChild avltree.Node,
+	newHeight int,
+) avltree.RealNode {
 	node.LeftChildNode = unwrap(newLeftChild)
 	node.RightChildNode = unwrap(newRightChild)
 	node.HeightValue = newHeight
@@ -141,7 +145,12 @@ func (node *LinkedTreeNode) SetChildren(newLeftChild, newRightChild Node, newHei
 	return node
 }
 
-func (node *LinkedTreeNode) Set(newLeftChild, newRightChild Node, newHeight int, newValue interface{}) RealNode {
+func (node *LinkedTreeNode) Set(
+	newLeftChild,
+	newRightChild avltree.Node,
+	newHeight int,
+	newValue interface{},
+) avltree.RealNode {
 	node.ValueData = newValue
 	return node.SetChildren(newLeftChild, newRightChild, newHeight)
 }

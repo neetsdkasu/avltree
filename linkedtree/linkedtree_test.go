@@ -10,7 +10,13 @@ import (
 
 var cfg1000 = &quick.Config{MaxCount: 1000}
 
-type IntKey = avltree.IntKey
+type (
+	IntKey   = avltree.IntKey
+	Key      = avltree.Key
+	Node     = avltree.Node
+	RealNode = avltree.RealNode
+	Tree     = avltree.Tree
+)
 
 type keyAndValue struct {
 	Key   int
@@ -96,24 +102,11 @@ func toKeyValueInts(list interface{}) (result []int) {
 	return
 }
 
-func ascIterateNode(node Node, callBack func(n Node)) {
-	if node != nil {
-		ascIterateNode(node.LeftChild(), callBack)
-		callBack(node)
-		ascIterateNode(node.RightChild(), callBack)
-	}
-}
-
 func getAllAscKeyAndValues(tree Tree) (result []int) {
-	// avltree.Iterateに頼らない方法のほうがいいかも？
-	//	avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
-	//		result = append(result, int(node.Key().(IntKey)))
-	//		result = append(result, node.Value().(int))
-	//		return
-	//	})
-	ascIterateNode(tree.Root(), func(node Node) {
+	avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
 		result = append(result, int(node.Key().(IntKey)))
 		result = append(result, node.Value().(int))
+		return
 	})
 	return
 }
@@ -156,14 +149,16 @@ func takeInvalidNode(tree Tree, check func(node Node) bool) (invalidNode Node) {
 }
 
 func takeInvalidHeightNode(tree Tree) (invalidNode Node) {
-	// avltree.Iterateに頼らない方法のほうがいいかも？
-	//	avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
-	//		if !checkHeight(node) {
-	//			invalidNode = node
-	//			breakIteration = true
-	//		}
-	//		return
-	//	})
+	avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+		if !checkHeight(node) {
+			invalidNode = node
+			breakIteration = true
+		}
+		return
+	})
+	if invalidNode != nil {
+		return
+	}
 	return takeInvalidNode(tree, checkHeight)
 }
 
@@ -188,14 +183,16 @@ func checkBalance(node Node) bool {
 }
 
 func takeInvalidBalanceNode(tree Tree) (invalidNode Node) {
-	// avltree.Iterateに頼らない方法のほうがいいかも？
-	//	avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
-	//		if !checkBalance(node) {
-	//			invalidNode = node
-	//			breakIteration = true
-	//		}
-	//		return
-	//	})
+	avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+		if !checkBalance(node) {
+			invalidNode = node
+			breakIteration = true
+		}
+		return
+	})
+	if invalidNode != nil {
+		return
+	}
 	return takeInvalidNode(tree, checkBalance)
 }
 
@@ -440,7 +437,7 @@ func TestParent(t *testing.T) {
 				return root
 			}
 		}
-		invalidNode := takeInvalidNode(tree, func(node Node) (ok bool) {
+		checkParent := func(node Node) (ok bool) {
 			if parent := node.(avltree.ParentGetter).Parent(); parent != nil {
 				leftChild := parent.LeftChild()
 				rightChild := parent.RightChild()
@@ -461,7 +458,19 @@ func TestParent(t *testing.T) {
 				}
 			}
 			return true
+		}
+		var invalidNode Node = nil
+		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
+			if !checkParent(node) {
+				invalidNode = node
+				breakIteration = true
+			}
+			return
 		})
+		if invalidNode != nil {
+			return invalidNode
+		}
+		invalidNode = takeInvalidNode(tree, checkParent)
 		return invalidNode
 	}
 
