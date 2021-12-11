@@ -169,6 +169,23 @@ func Alter(tree Tree, key Key, callBack AlterNodeCallBack) (modified Tree, delet
 	}
 }
 
+func Clear(tree Tree) (modified Tree) {
+	if releaser, ok := tree.(NodeReleaser); ok {
+		stack := []Node{tree.Root()}
+		for 0 < len(stack) {
+			newsize := len(stack) - 1
+			node := stack[newsize]
+			stack = stack[:newsize]
+			if node == nil {
+				continue
+			}
+			stack = append(stack, node.RightChild(), node.LeftChild())
+			releaser.ReleaseNode(node.(RealNode))
+		}
+	}
+	return tree.(RealTree).SetRoot(nil)
+}
+
 func Find(tree Tree, key Key) (node Node, ok bool) {
 	node = tree.Root()
 	for node != nil {
