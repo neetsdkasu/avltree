@@ -6,6 +6,8 @@ import (
 	"testing/quick"
 )
 
+var cfg1000 = &quick.Config{MaxCount: 1000}
+
 type assertion testing.T
 
 func (a *assertion) IsTrue(expectTrue bool, args ...interface{}) {
@@ -42,7 +44,7 @@ func TestIntKey(t *testing.T) {
 		}
 	}
 
-	if err := quick.Check(f, nil); err != nil {
+	if err := quick.Check(f, cfg1000); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -61,7 +63,7 @@ func TestStringKey(t *testing.T) {
 		}
 	}
 
-	if err := quick.Check(f, nil); err != nil {
+	if err := quick.Check(f, cfg1000); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -394,8 +396,14 @@ func TestInner_compareChildHeight(t *testing.T) {
 }
 
 func TestInner_intMax(t *testing.T) {
-	_ = intMax
-	t.Log("intMax のテストをまだ実装していない")
+	f := func(a, b int) bool {
+		m := intMax(a, b)
+		return (m >= a) && (m >= b) && (m == a || m == b)
+	}
+
+	if err := quick.Check(f, cfg1000); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestInner_calcNewHeight(t *testing.T) {
@@ -508,8 +516,21 @@ func TestInner_bothBounds(t *testing.T) {
 }
 
 func TestInner_noBoundsChecker(t *testing.T) {
-	var _ noBoundsChecker
-	t.Log("noBoundsChecker のテストをまだ実装していない")
+	a := (*assertion)(t)
+	var nbc noBoundsChecker
+	var checker boundsChecker = nbc
+	a.IsTrue(
+		checker.includeLower(),
+		"checker.includeLower()",
+	)
+	a.IsTrue(
+		checker.includeKey(),
+		"checker.includeKey()",
+	)
+	a.IsTrue(
+		checker.includeUpper(),
+		"checker.includeUpper()",
+	)
 }
 
 func TestInner_upperBoundsChecker(t *testing.T) {
