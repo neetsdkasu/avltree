@@ -3356,3 +3356,451 @@ func TestAlterBalance(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestAscAlterIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		tree := New(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		_, delValues, _ := avltree.AlterIterate(tree, false, func(node avltree.AlterNode) (request avltree.AlterRequest, breakIteration bool) {
+			value := node.Value().(int)
+			switch value & 3 {
+			case 0, 3:
+				if value < 0 {
+					return node.Keep(), false
+				} else {
+					request.Keep()
+				}
+			case 1:
+				if value < 0 {
+					return node.Replace(value >> 1), false
+				} else {
+					request.Replace(value >> 1)
+				}
+			case 2:
+				if value < 0 {
+					return node.Delete(), false
+				} else {
+					request.Delete()
+				}
+			}
+			return
+		})
+		result := getAllAscKeyAndValues(tree)
+		values := toKeyValueInts(delValues)
+		result = append(result, values...)
+		return result
+	}
+
+	g := func(listBase []keyAndValue) []int {
+		list := toAscSorted(omitDuplicates(listBase))
+		result := []int(nil)
+		deleted := []int{}
+		for _, kv := range list {
+			switch kv.Value & 3 {
+			case 0, 3:
+				result = append(result, kv.Key, kv.Value)
+			case 1:
+				result = append(result, kv.Key, kv.Value>>1)
+			case 2:
+				deleted = append(deleted, kv.Key, kv.Value)
+			}
+		}
+		result = append(result, deleted...)
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAscHalfAlterIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		tree := New(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		count := (len(list) + 1) / 2
+		_, delValues, _ := avltree.AlterIterate(tree, false, func(node avltree.AlterNode) (request avltree.AlterRequest, breakIteration bool) {
+			count--
+			if count < 0 {
+				breakIteration = true
+				return
+			}
+			value := node.Value().(int)
+			switch value & 3 {
+			case 0, 3:
+				if value < 0 {
+					return node.Keep(), false
+				} else {
+					request.Keep()
+				}
+			case 1:
+				if value < 0 {
+					return node.Replace(value >> 1), false
+				} else {
+					request.Replace(value >> 1)
+				}
+			case 2:
+				if value < 0 {
+					return node.Delete(), false
+				} else {
+					request.Delete()
+				}
+			}
+			return
+		})
+		result := getAllAscKeyAndValues(tree)
+		values := toKeyValueInts(delValues)
+		result = append(result, values...)
+		return result
+	}
+
+	g := func(listBase []keyAndValue) []int {
+		list := toAscSorted(omitDuplicates(listBase))
+		result := []int(nil)
+		deleted := []int{}
+		count := (len(list) + 1) / 2
+		for i, kv := range list {
+			count--
+			if count < 0 {
+				result = append(result, toKeyValueInts(list[i:])...)
+				break
+			}
+			switch kv.Value & 3 {
+			case 0, 3:
+				result = append(result, kv.Key, kv.Value)
+			case 1:
+				result = append(result, kv.Key, kv.Value>>1)
+			case 2:
+				deleted = append(deleted, kv.Key, kv.Value)
+			}
+		}
+		result = append(result, deleted...)
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDescAlterIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		tree := New(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		_, delValues, _ := avltree.AlterIterate(tree, true, func(node avltree.AlterNode) (request avltree.AlterRequest, breakIteration bool) {
+			value := node.Value().(int)
+			switch value & 3 {
+			case 0, 3:
+				if value < 0 {
+					return node.Keep(), false
+				} else {
+					request.Keep()
+				}
+			case 1:
+				if value < 0 {
+					return node.Replace(value >> 1), false
+				} else {
+					request.Replace(value >> 1)
+				}
+			case 2:
+				if value < 0 {
+					return node.Delete(), false
+				} else {
+					request.Delete()
+				}
+			}
+			return
+		})
+		result := getAllAscKeyAndValues(tree)
+		values := toKeyValueInts(delValues)
+		result = append(result, values...)
+		return result
+	}
+
+	g := func(listBase []keyAndValue) []int {
+		list := toAscSorted(omitDuplicates(listBase))
+		result := []int(nil)
+		deleted := []int{}
+		for _, kv := range list {
+			switch kv.Value & 3 {
+			case 0, 3:
+				result = append(result, kv.Key, kv.Value)
+			case 1:
+				result = append(result, kv.Key, kv.Value>>1)
+			case 2:
+				deleted = append(deleted, kv.Value, kv.Key)
+			}
+		}
+		result = append(result, reversed(deleted)...)
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDescHalfAlterIterate(t *testing.T) {
+
+	f := func(listBase []keyAndValue) []int {
+		list := omitDuplicates(listBase)
+		tree := New(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		count := (len(list) + 1) / 2
+		_, delValues, _ := avltree.AlterIterate(tree, true, func(node avltree.AlterNode) (request avltree.AlterRequest, breakIteration bool) {
+			count--
+			if count < 0 {
+				breakIteration = true
+				return
+			}
+			value := node.Value().(int)
+			switch value & 3 {
+			case 0, 3:
+				if value < 0 {
+					return node.Keep(), false
+				} else {
+					request.Keep()
+				}
+			case 1:
+				if value < 0 {
+					return node.Replace(value >> 1), false
+				} else {
+					request.Replace(value >> 1)
+				}
+			case 2:
+				if value < 0 {
+					return node.Delete(), false
+				} else {
+					request.Delete()
+				}
+			}
+			return
+		})
+		result := getAllAscKeyAndValues(tree)
+		values := toKeyValueInts(delValues)
+		result = append(result, values...)
+		return result
+	}
+
+	g := func(listBase []keyAndValue) []int {
+		list := toAscSorted(omitDuplicates(listBase))
+		result := []int(nil)
+		deleted := []int{}
+		count := len(list) - (len(list)+1)/2
+		for _, kv := range list {
+			count--
+			if count >= 0 {
+				result = append(result, kv.Key, kv.Value)
+				continue
+			}
+			switch kv.Value & 3 {
+			case 0, 3:
+				result = append(result, kv.Key, kv.Value)
+			case 1:
+				result = append(result, kv.Key, kv.Value>>1)
+			case 2:
+				deleted = append(deleted, kv.Value, kv.Key)
+			}
+		}
+		result = append(result, reversed(deleted)...)
+		return result
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAscAlterIterateHeight(t *testing.T) {
+
+	f := func(listBase []keyAndValue) Node {
+		list := omitDuplicates(listBase)
+		tree := New(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		avltree.AlterIterate(tree, false, func(node avltree.AlterNode) (request avltree.AlterRequest, breakIteration bool) {
+			value := node.Value().(int)
+			switch value & 3 {
+			case 0, 3:
+				if value < 0 {
+					return node.Keep(), false
+				} else {
+					request.Keep()
+				}
+			case 1:
+				if value < 0 {
+					return node.Replace(value >> 1), false
+				} else {
+					request.Replace(value >> 1)
+				}
+			case 2:
+				if value < 0 {
+					return node.Delete(), false
+				} else {
+					request.Delete()
+				}
+			}
+			return
+		})
+		invalidNode := takeInvalidHeightNode(tree)
+		return invalidNode
+	}
+
+	g := func(listBase []keyAndValue) Node {
+		return nil
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAscAlterIterateBalance(t *testing.T) {
+
+	f := func(listBase []keyAndValue) Node {
+		list := omitDuplicates(listBase)
+		tree := New(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		avltree.AlterIterate(tree, false, func(node avltree.AlterNode) (request avltree.AlterRequest, breakIteration bool) {
+			value := node.Value().(int)
+			switch value & 3 {
+			case 0, 3:
+				if value < 0 {
+					return node.Keep(), false
+				} else {
+					request.Keep()
+				}
+			case 1:
+				if value < 0 {
+					return node.Replace(value >> 1), false
+				} else {
+					request.Replace(value >> 1)
+				}
+			case 2:
+				if value < 0 {
+					return node.Delete(), false
+				} else {
+					request.Delete()
+				}
+			}
+			return
+		})
+		invalidNode := takeInvalidBalanceNode(tree)
+		return invalidNode
+	}
+
+	g := func(listBase []keyAndValue) Node {
+		return nil
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDescAlterIterateHeight(t *testing.T) {
+
+	f := func(listBase []keyAndValue) Node {
+		list := omitDuplicates(listBase)
+		tree := New(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		avltree.AlterIterate(tree, true, func(node avltree.AlterNode) (request avltree.AlterRequest, breakIteration bool) {
+			value := node.Value().(int)
+			switch value & 3 {
+			case 0, 3:
+				if value < 0 {
+					return node.Keep(), false
+				} else {
+					request.Keep()
+				}
+			case 1:
+				if value < 0 {
+					return node.Replace(value >> 1), false
+				} else {
+					request.Replace(value >> 1)
+				}
+			case 2:
+				if value < 0 {
+					return node.Delete(), false
+				} else {
+					request.Delete()
+				}
+			}
+			return
+		})
+		invalidNode := takeInvalidHeightNode(tree)
+		return invalidNode
+	}
+
+	g := func(listBase []keyAndValue) Node {
+		return nil
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDescAlterIterateBalance(t *testing.T) {
+
+	f := func(listBase []keyAndValue) Node {
+		list := omitDuplicates(listBase)
+		tree := New(false)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		avltree.AlterIterate(tree, true, func(node avltree.AlterNode) (request avltree.AlterRequest, breakIteration bool) {
+			value := node.Value().(int)
+			switch value & 3 {
+			case 0, 3:
+				if value < 0 {
+					return node.Keep(), false
+				} else {
+					request.Keep()
+				}
+			case 1:
+				if value < 0 {
+					return node.Replace(value >> 1), false
+				} else {
+					request.Replace(value >> 1)
+				}
+			case 2:
+				if value < 0 {
+					return node.Delete(), false
+				} else {
+					request.Delete()
+				}
+			}
+			return
+		})
+		invalidNode := takeInvalidBalanceNode(tree)
+		return invalidNode
+	}
+
+	g := func(listBase []keyAndValue) Node {
+		return nil
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}

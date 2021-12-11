@@ -453,6 +453,32 @@ func ReplaceRange(tree Tree, lower, upper Key, newValue interface{}) (modified T
 	})
 }
 
+func AlterIterate(tree Tree, descOrder bool, callBack AlterIterateCallBack) (modified Tree, deletedValues []KeyAndValue, ok bool) {
+	var newRoot Node
+	var deleted []Node
+	var anyChanged bool
+	if descOrder {
+		newRoot, deleted, anyChanged, _ = descAlterIterate(tree.Root(), callBack)
+	} else {
+		newRoot, deleted, anyChanged, _ = ascAlterIterate(tree.Root(), callBack)
+	}
+	if !anyChanged {
+		return tree, nil, false
+	}
+	for _, node := range deleted {
+		kv := &keyAndValue{node.Key(), node.Value()}
+		deletedValues = append(deletedValues, kv)
+		if releaser, ok := tree.(NodeReleaser); ok {
+			releaser.ReleaseNode(node.(RealNode))
+		}
+	}
+	if root, ok := newRoot.(RealNode); ok {
+		return tree.(RealTree).SetRoot(root), deletedValues, true
+	} else {
+		return tree.(RealTree).SetRoot(nil), deletedValues, true
+	}
+}
+
 func (ordering KeyOrdering) LessThan() bool {
 	return int(ordering) < 0
 }
@@ -1839,6 +1865,82 @@ func ascAlterIterate(root Node, callBack AlterIterateCallBack) (newRoot Node, de
 		panic("unreachable")
 	}
 	deleted = append(deleted, rightDeleted...)
+	anyChanged = leftAnyChanged || !request.isKeepRequest() || rightAnyChanged
+	return newRoot, deleted, anyChanged, breakIteration
+}
+
+func descAlterIterate(root Node, callBack AlterIterateCallBack) (newRoot Node, deleted []Node, anyChanged, breakIteration bool) {
+	if root == nil {
+		return nil, nil, false, false
+	}
+
+	rightChild, rightDeleted, rightAnyChanged, breakIteration := descAlterIterate(root.RightChild(), callBack)
+	if breakIteration {
+		if rightAnyChanged {
+			newRoot = rotate(setRightChild(root.(RealNode), rightChild))
+		} else {
+			newRoot = root
+		}
+		return newRoot, rightDeleted, rightAnyChanged, breakIteration
+	}
+
+	request, breakIteration := callBack(alterNode{root})
+	if breakIteration {
+		deleted = rightDeleted
+		switch {
+		case !rightAnyChanged && request.isKeepRequest():
+			newRoot = root
+		case rightAnyChanged && request.isKeepRequest():
+			newRoot = rotate(setRightChild(root.(RealNode), rightChild))
+		case !rightAnyChanged && request.isReplaceRequest():
+			newRoot = root.SetValue(request.newValue)
+		case rightAnyChanged && request.isReplaceRequest():
+			newValue := request.newValue
+			leftChild := root.LeftChild()
+			newRoot = rotate(resetNode(root.(RealNode), leftChild, rightChild, newValue))
+		case request.isDeleteRequest():
+			deleted = append(deleted, root)
+			leftChild := root.LeftChild()
+			if compareNodeHeight(leftChild, rightChild) == leftIsHigher {
+				leftChild, newRoot = removeMax(leftChild)
+			} else {
+				rightChild, newRoot = removeMin(rightChild)
+			}
+			if newRoot != nil {
+				newRoot = rotate(setChildren(newRoot.(RealNode), leftChild, rightChild))
+			}
+		default:
+			panic("unreachable")
+		}
+		anyChanged = rightAnyChanged || !request.isKeepRequest()
+		return newRoot, deleted, anyChanged, breakIteration
+	}
+
+	leftChild, leftDeleted, leftAnyChanged, breakIteration := descAlterIterate(root.LeftChild(), callBack)
+
+	deleted = rightDeleted
+	switch {
+	case !leftAnyChanged && request.isKeepRequest() && !rightAnyChanged:
+		newRoot = root
+	case request.isKeepRequest():
+		newRoot = rotate(setChildren(root.(RealNode), leftChild, rightChild))
+	case request.isReplaceRequest():
+		newValue := request.newValue
+		newRoot = rotate(resetNode(root.(RealNode), leftChild, rightChild, newValue))
+	case request.isDeleteRequest():
+		deleted = append(deleted, root)
+		if compareNodeHeight(leftChild, rightChild) == leftIsHigher {
+			leftChild, newRoot = removeMax(leftChild)
+		} else {
+			rightChild, newRoot = removeMin(rightChild)
+		}
+		if newRoot != nil {
+			newRoot = rotate(setChildren(newRoot.(RealNode), leftChild, rightChild))
+		}
+	default:
+		panic("unreachable")
+	}
+	deleted = append(deleted, leftDeleted...)
 	anyChanged = leftAnyChanged || !request.isKeepRequest() || rightAnyChanged
 	return newRoot, deleted, anyChanged, breakIteration
 }
