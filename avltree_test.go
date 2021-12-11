@@ -92,6 +92,22 @@ func TestKeyOrderingLessThanOtherKey(t *testing.T) {
 		LessThanOtherKey.GreaterThanOrEqualTo(),
 		"LessThanOtherKey.GreaterThanOrEqualTo()",
 	)
+	a.IsTrue(
+		LessThanOtherKey.Less(false),
+		"LessThanOtherKey.Less(false)",
+	)
+	a.IsTrue(
+		LessThanOtherKey.Less(true),
+		"LessThanOtherKey.Less(true)",
+	)
+	a.IsFalse(
+		LessThanOtherKey.Greater(false),
+		"LessThanOtherKey.Greater(false)",
+	)
+	a.IsFalse(
+		LessThanOtherKey.Greater(true),
+		"LessThanOtherKey.Greater(true)",
+	)
 }
 
 func TestKeyOrderingEqualToOtherKey(t *testing.T) {
@@ -120,6 +136,22 @@ func TestKeyOrderingEqualToOtherKey(t *testing.T) {
 		EqualToOtherKey.GreaterThanOrEqualTo(),
 		"EqualToOtherKey.GreaterThanOrEqualTo()",
 	)
+	a.IsFalse(
+		EqualToOtherKey.Less(false),
+		"EqualToOtherKey.Less(false)",
+	)
+	a.IsTrue(
+		EqualToOtherKey.Less(true),
+		"EqualToOtherKey.Less(true)",
+	)
+	a.IsFalse(
+		EqualToOtherKey.Greater(false),
+		"EqualToOtherKey.Greater(false)",
+	)
+	a.IsTrue(
+		EqualToOtherKey.Greater(true),
+		"EqualToOtherKey.Greater(true)",
+	)
 }
 
 func TestKeyOrderingGreaterThanOtherKey(t *testing.T) {
@@ -147,5 +179,21 @@ func TestKeyOrderingGreaterThanOtherKey(t *testing.T) {
 	a.IsTrue(
 		GreaterThanOtherKey.GreaterThanOrEqualTo(),
 		"GreaterThanOtherKey.GreaterThanOrEqualTo()",
+	)
+	a.IsFalse(
+		GreaterThanOtherKey.Less(false),
+		"GreaterThanOtherKey.Less(false)",
+	)
+	a.IsFalse(
+		GreaterThanOtherKey.Less(true),
+		"GreaterThanOtherKey.Less(true)",
+	)
+	a.IsTrue(
+		GreaterThanOtherKey.Greater(false),
+		"GreaterThanOtherKey.Greater(false)",
+	)
+	a.IsTrue(
+		GreaterThanOtherKey.Greater(true),
+		"GreaterThanOtherKey.Greater(true)",
 	)
 }
