@@ -1,6 +1,6 @@
 package linkedtree
 
-import "avltree"
+import "github.com/neetsdkasu/avltree"
 
 type LinkedTree struct {
 	RootNode                *LinkedTreeNode

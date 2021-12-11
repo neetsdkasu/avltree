@@ -5,7 +5,7 @@ import (
 	"testing"
 	"testing/quick"
 
-	"avltree"
+	"github.com/neetsdkasu/avltree"
 )
 
 var cfg1000 = &quick.Config{MaxCount: 1000}
