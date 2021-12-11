@@ -11,6 +11,14 @@ type AlterIterateCallBack = func(node AlterNode) (request AlterRequest, breakIte
 
 type NodeCounter interface{ NodeCount() int }
 type NodeReleaser interface{ ReleaseNode(node RealNode) }
+type TreeReleaser interface {
+	Tree
+	ReleaseTree()
+}
+type TreeCleaner interface {
+	Tree
+	CleanUpTree()
+}
 type ParentGetter interface {
 	Node
 	Parent() Node
@@ -183,7 +191,18 @@ func Clear(tree Tree) (modified Tree) {
 			releaser.ReleaseNode(node.(RealNode))
 		}
 	}
+	if cleaner, ok := tree.(TreeCleaner); ok {
+		cleaner.CleanUpTree()
+	}
 	return tree.(RealTree).SetRoot(nil)
+}
+
+func Release(tree *Tree) {
+	Clear(*tree)
+	if releaser, ok := (*tree).(TreeReleaser); ok {
+		releaser.ReleaseTree()
+	}
+	*tree = nil
 }
 
 func Find(tree Tree, key Key) (node Node, ok bool) {
