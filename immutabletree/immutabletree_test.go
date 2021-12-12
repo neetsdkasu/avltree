@@ -198,16 +198,19 @@ func takeInvalidBalanceNode(tree Tree) (invalidNode Node) {
 
 func TestInsertOneEntry(t *testing.T) {
 
-	f := func(k, v int) Tree {
-		tree := New(false)
-		tree, _ = avltree.Insert(tree, false, IntKey(k), v)
-		return tree
+	f := func(k, v int) []Tree {
+		tree0 := New(false)
+		tree1, _ := avltree.Insert(tree0, false, IntKey(k), v)
+		return []Tree{tree0, tree1}
 	}
 
-	g := func(k, v int) Tree {
+	g := func(k, v int) []Tree {
 		root := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k), v}
-		tree := &ImmutableTree{root, false}
-		return tree
+		tree1 := &ImmutableTree{root, false}
+		return []Tree{
+			&ImmutableTree{nil, false},
+			tree1,
+		}
 	}
 
 	if err := quick.CheckEqual(f, g, nil); err != nil {
@@ -217,17 +220,17 @@ func TestInsertOneEntry(t *testing.T) {
 
 func TestInsertTwoEntries(t *testing.T) {
 
-	f := func(k1, v1, k2, v2 int) Tree {
+	f := func(k1, v1, k2, v2 int) []Tree {
 		if k1 == k2 {
 			return nil
 		}
-		tree := New(false)
-		tree, _ = avltree.Insert(tree, false, IntKey(k1), v1)
-		tree, _ = avltree.Insert(tree, false, IntKey(k2), v2)
-		return tree
+		tree0 := New(false)
+		tree1, _ := avltree.Insert(tree0, false, IntKey(k1), v1)
+		tree2, _ := avltree.Insert(tree1, false, IntKey(k2), v2)
+		return []Tree{tree0, tree1, tree2}
 	}
 
-	g := func(k1, v1, k2, v2 int) Tree {
+	g := func(k1, v1, k2, v2 int) []Tree {
 		if k1 == k2 {
 			return nil
 		}
@@ -238,8 +241,12 @@ func TestInsertTwoEntries(t *testing.T) {
 		} else {
 			root.RightChildNode = child
 		}
-		tree := &ImmutableTree{root, false}
-		return tree
+		tree2 := &ImmutableTree{root, false}
+		return []Tree{
+			&ImmutableTree{nil, false},
+			&ImmutableTree{&ImmutableTreeNode{nil, nil, 1, 1, IntKey(k1), v1}, false},
+			tree2,
+		}
 	}
 
 	if err := quick.CheckEqual(f, g, cfg1000); err != nil {
@@ -249,19 +256,19 @@ func TestInsertTwoEntries(t *testing.T) {
 
 func TestRejectDuplicateKey(t *testing.T) {
 
-	f := func(k1, v1, k2, v2, v3, v4 int) Tree {
+	f := func(k1, v1, k2, v2, v3, v4 int) []Tree {
 		if k1 == k2 || v1 == v3 || v2 == v4 {
 			return nil
 		}
-		tree := New(false)
-		tree, _ = avltree.Insert(tree, false, IntKey(k1), v1)
-		tree, _ = avltree.Insert(tree, false, IntKey(k2), v2)
-		tree, _ = avltree.Insert(tree, false, IntKey(k1), v3)
-		tree, _ = avltree.Insert(tree, false, IntKey(k2), v4)
-		return tree
+		tree0 := New(false)
+		tree1, _ := avltree.Insert(tree0, false, IntKey(k1), v1)
+		tree2, _ := avltree.Insert(tree1, false, IntKey(k2), v2)
+		tree3, _ := avltree.Insert(tree2, false, IntKey(k1), v3)
+		tree4, _ := avltree.Insert(tree3, false, IntKey(k2), v4)
+		return []Tree{tree0, tree1, tree2, tree3, tree4}
 	}
 
-	g := func(k1, v1, k2, v2, v3, v4 int) Tree {
+	g := func(k1, v1, k2, v2, v3, v4 int) []Tree {
 		if k1 == k2 || v1 == v3 || v2 == v4 {
 			return nil
 		}
@@ -272,8 +279,14 @@ func TestRejectDuplicateKey(t *testing.T) {
 		} else {
 			root.RightChildNode = child
 		}
-		tree := &ImmutableTree{root, false}
-		return tree
+		tree2 := &ImmutableTree{root, false}
+		return []Tree{
+			&ImmutableTree{nil, false},
+			&ImmutableTree{&ImmutableTreeNode{nil, nil, 1, 1, IntKey(k1), v1}, false},
+			tree2,
+			tree2,
+			tree2,
+		}
 	}
 
 	if err := quick.CheckEqual(f, g, cfg1000); err != nil {
@@ -283,31 +296,53 @@ func TestRejectDuplicateKey(t *testing.T) {
 
 func TestReplaceDuplicateKey(t *testing.T) {
 
-	f := func(k1, v1, k2, v2, v3, v4 int) Tree {
+	f := func(k1, v1, k2, v2, v3, v4 int) []Tree {
 		if k1 == k2 || v1 == v3 || v2 == v4 {
 			return nil
 		}
-		tree := New(false)
-		tree, _ = avltree.Insert(tree, false, IntKey(k1), v1)
-		tree, _ = avltree.Insert(tree, false, IntKey(k2), v2)
-		tree, _ = avltree.Insert(tree, true, IntKey(k1), v3)
-		tree, _ = avltree.Insert(tree, true, IntKey(k2), v4)
-		return tree
+		tree0 := New(false)
+		tree1, _ := avltree.Insert(tree0, false, IntKey(k1), v1)
+		tree2, _ := avltree.Insert(tree1, false, IntKey(k2), v2)
+		tree3, _ := avltree.Insert(tree2, true, IntKey(k1), v3)
+		tree4, _ := avltree.Insert(tree3, true, IntKey(k2), v4)
+		return []Tree{tree0, tree1, tree2, tree3, tree4}
 	}
 
-	g := func(k1, v1, k2, v2, v3, v4 int) Tree {
+	g := func(k1, v1, k2, v2, v3, v4 int) []Tree {
 		if k1 == k2 || v1 == v3 || v2 == v4 {
 			return nil
 		}
-		root := &ImmutableTreeNode{nil, nil, 2, 2, IntKey(k1), v3}
-		child := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k2), v4}
+		root2 := &ImmutableTreeNode{nil, nil, 2, 2, IntKey(k1), v1}
+		child2 := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k2), v2}
 		if k2 < k1 {
-			root.LeftChildNode = child
+			root2.LeftChildNode = child2
 		} else {
-			root.RightChildNode = child
+			root2.RightChildNode = child2
 		}
-		tree := &ImmutableTree{root, false}
-		return tree
+		tree2 := &ImmutableTree{root2, false}
+		root3 := &ImmutableTreeNode{nil, nil, 2, 2, IntKey(k1), v3}
+		child3 := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k2), v2}
+		if k2 < k1 {
+			root3.LeftChildNode = child3
+		} else {
+			root3.RightChildNode = child3
+		}
+		tree3 := &ImmutableTree{root3, false}
+		root4 := &ImmutableTreeNode{nil, nil, 2, 2, IntKey(k1), v3}
+		child4 := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k2), v4}
+		if k2 < k1 {
+			root4.LeftChildNode = child4
+		} else {
+			root4.RightChildNode = child4
+		}
+		tree4 := &ImmutableTree{root4, false}
+		return []Tree{
+			&ImmutableTree{nil, false},
+			&ImmutableTree{&ImmutableTreeNode{nil, nil, 1, 1, IntKey(k1), v1}, false},
+			tree2,
+			tree3,
+			tree4,
+		}
 	}
 
 	if err := quick.CheckEqual(f, g, cfg1000); err != nil {
@@ -317,42 +352,63 @@ func TestReplaceDuplicateKey(t *testing.T) {
 
 func TestAllowDuplicateKey(t *testing.T) {
 
-	f := func(k1, v1, k2, v2, v3, v4 int) Tree {
+	f := func(k1, v1, k2, v2, v3, v4 int) []Tree {
 		if k1 == k2 || v1 == v3 || v2 == v4 {
 			return nil
 		}
-		tree := New(true)
-		tree, _ = avltree.Insert(tree, false, IntKey(k1), v1)
-		tree, _ = avltree.Insert(tree, false, IntKey(k2), v2)
-		tree, _ = avltree.Insert(tree, false, IntKey(k1), v3)
-		tree, _ = avltree.Insert(tree, false, IntKey(k2), v4)
-		return tree
+		tree0 := New(true)
+		tree1, _ := avltree.Insert(tree0, false, IntKey(k1), v1)
+		tree2, _ := avltree.Insert(tree1, false, IntKey(k2), v2)
+		tree3, _ := avltree.Insert(tree2, false, IntKey(k1), v3)
+		tree4, _ := avltree.Insert(tree3, false, IntKey(k2), v4)
+		return []Tree{tree0, tree1, tree2, tree3, tree4}
 	}
 
-	g := func(k1, v1, k2, v2, v3, v4 int) Tree {
+	g := func(k1, v1, k2, v2, v3, v4 int) []Tree {
 		if k1 == k2 || v1 == v3 || v2 == v4 {
 			return nil
 		}
-		var root *ImmutableTreeNode
+		var root2, root3, root4 *ImmutableTreeNode
 		if k2 < k1 {
-			root = &ImmutableTreeNode{nil, nil, 3, 4, IntKey(k1), v1}
-			lChild := &ImmutableTreeNode{nil, nil, 2, 2, IntKey(k2), v2}
-			rChild := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k1), v3}
-			lrChild := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k2), v4}
-			lChild.RightChildNode = lrChild
-			root.LeftChildNode = lChild
-			root.RightChildNode = rChild
+			root2 = &ImmutableTreeNode{nil, nil, 2, 2, IntKey(k1), v1}
+			lChild2 := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k2), v2}
+			root2.LeftChildNode = lChild2
+			root3 = &ImmutableTreeNode{nil, nil, 2, 3, IntKey(k1), v1}
+			lChild3 := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k2), v2}
+			rChild3 := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k1), v3}
+			root3.LeftChildNode = lChild3
+			root3.RightChildNode = rChild3
+			root4 = &ImmutableTreeNode{nil, nil, 3, 4, IntKey(k1), v1}
+			lChild4 := &ImmutableTreeNode{nil, nil, 2, 2, IntKey(k2), v2}
+			rChild4 := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k1), v3}
+			lrChild4 := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k2), v4}
+			lChild4.RightChildNode = lrChild4
+			root4.LeftChildNode = lChild4
+			root4.RightChildNode = rChild4
 		} else {
-			root = &ImmutableTreeNode{nil, nil, 3, 4, IntKey(k1), v3}
-			lChild := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k1), v1}
-			rChild := &ImmutableTreeNode{nil, nil, 2, 2, IntKey(k2), v2}
-			rrChild := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k2), v4}
-			rChild.RightChildNode = rrChild
-			root.LeftChildNode = lChild
-			root.RightChildNode = rChild
+			root2 = &ImmutableTreeNode{nil, nil, 2, 2, IntKey(k1), v1}
+			rChild2 := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k2), v2}
+			root2.RightChildNode = rChild2
+			root3 = &ImmutableTreeNode{nil, nil, 2, 3, IntKey(k1), v3}
+			lChild3 := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k1), v1}
+			rChild3 := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k2), v2}
+			root3.LeftChildNode = lChild3
+			root3.RightChildNode = rChild3
+			root4 = &ImmutableTreeNode{nil, nil, 3, 4, IntKey(k1), v3}
+			lChild4 := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k1), v1}
+			rChild4 := &ImmutableTreeNode{nil, nil, 2, 2, IntKey(k2), v2}
+			rrChild4 := &ImmutableTreeNode{nil, nil, 1, 1, IntKey(k2), v4}
+			rChild4.RightChildNode = rrChild4
+			root4.LeftChildNode = lChild4
+			root4.RightChildNode = rChild4
 		}
-		tree := &ImmutableTree{root, true}
-		return tree
+		return []Tree{
+			&ImmutableTree{nil, true},
+			&ImmutableTree{&ImmutableTreeNode{nil, nil, 1, 1, IntKey(k1), v1}, true},
+			&ImmutableTree{root2, true},
+			&ImmutableTree{root3, true},
+			&ImmutableTree{root4, true},
+		}
 	}
 
 	if err := quick.CheckEqual(f, g, cfg1000); err != nil {
