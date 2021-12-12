@@ -64,6 +64,7 @@ const (
 
 type Key interface {
 	CompareTo(other Key) KeyOrdering
+	Copy() Key
 }
 
 type IntKey int
@@ -82,12 +83,20 @@ func (key IntKey) CompareTo(other Key) KeyOrdering {
 	// return v1 - v2 は 算術オーバーフローがこわい
 }
 
+func (key IntKey) Copy() Key {
+	return key
+}
+
 type StringKey string
 
 func (key StringKey) CompareTo(other Key) KeyOrdering {
 	s1 := string(key)
 	s2 := string(other.(StringKey))
 	return KeyOrdering(strings.Compare(s1, s2))
+}
+
+func (key StringKey) Copy() Key {
+	return key
 }
 
 func Insert(tree Tree, replaceIfExists bool, key Key, value interface{}) (modified Tree, ok bool) {
@@ -851,7 +860,7 @@ type insertHelper struct {
 }
 
 func (helper *insertHelper) newNode() RealNode {
-	return (*helper.tree).NewNode(nil, nil, 1, *helper.key, *helper.value)
+	return (*helper.tree).NewNode(nil, nil, 1, (*helper.key).Copy(), *helper.value)
 }
 
 func (helper *insertHelper) compareKey(node Node) KeyOrdering {

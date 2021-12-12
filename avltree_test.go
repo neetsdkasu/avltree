@@ -32,7 +32,9 @@ func (a *assertion) IsFalse(expectFalse bool, args ...interface{}) {
 
 func TestIntKey(t *testing.T) {
 	f := func(k1, k2 int) bool {
-		switch IntKey(k1).CompareTo(IntKey(k2)) {
+		var key1 Key = IntKey(k1)
+		var key2 Key = IntKey(k2)
+		switch key1.CompareTo(key2) {
 		case LessThanOtherKey:
 			return k1 < k2
 		case EqualToOtherKey:
@@ -51,7 +53,9 @@ func TestIntKey(t *testing.T) {
 
 func TestStringKey(t *testing.T) {
 	f := func(k1, k2 string) bool {
-		switch StringKey(k1).CompareTo(StringKey(k2)) {
+		var key1 Key = StringKey(k1)
+		var key2 Key = StringKey(k2)
+		switch key1.CompareTo(key2) {
 		case LessThanOtherKey:
 			return k1 < k2
 		case EqualToOtherKey:
