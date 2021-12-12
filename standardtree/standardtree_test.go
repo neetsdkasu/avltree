@@ -1,4 +1,4 @@
-package linkedtree
+package standardtree
 
 import (
 	"sort"
@@ -205,8 +205,8 @@ func TestInsertOneEntry(t *testing.T) {
 	}
 
 	g := func(k, v int) Tree {
-		root := &LinkedTreeNode{nil, nil, 1, nil, 1, IntKey(k), v}
-		tree := &LinkedTree{root, false}
+		root := &StandardTreeNode{nil, nil, 1, nil, 1, IntKey(k), v}
+		tree := &StandardTree{root, false}
 		return tree
 	}
 
@@ -231,14 +231,14 @@ func TestInsertTwoEntries(t *testing.T) {
 		if k1 == k2 {
 			return nil
 		}
-		root := &LinkedTreeNode{nil, nil, 2, nil, 2, IntKey(k1), v1}
-		child := &LinkedTreeNode{nil, nil, 1, root, 1, IntKey(k2), v2}
+		root := &StandardTreeNode{nil, nil, 2, nil, 2, IntKey(k1), v1}
+		child := &StandardTreeNode{nil, nil, 1, root, 1, IntKey(k2), v2}
 		if k2 < k1 {
 			root.LeftChildNode = child
 		} else {
 			root.RightChildNode = child
 		}
-		tree := &LinkedTree{root, false}
+		tree := &StandardTree{root, false}
 		return tree
 	}
 
@@ -265,14 +265,14 @@ func TestRejectDuplicateKey(t *testing.T) {
 		if k1 == k2 || v1 == v3 || v2 == v4 {
 			return nil
 		}
-		root := &LinkedTreeNode{nil, nil, 2, nil, 2, IntKey(k1), v1}
-		child := &LinkedTreeNode{nil, nil, 1, root, 1, IntKey(k2), v2}
+		root := &StandardTreeNode{nil, nil, 2, nil, 2, IntKey(k1), v1}
+		child := &StandardTreeNode{nil, nil, 1, root, 1, IntKey(k2), v2}
 		if k2 < k1 {
 			root.LeftChildNode = child
 		} else {
 			root.RightChildNode = child
 		}
-		tree := &LinkedTree{root, false}
+		tree := &StandardTree{root, false}
 		return tree
 	}
 
@@ -299,14 +299,14 @@ func TestReplaceDuplicateKey(t *testing.T) {
 		if k1 == k2 || v1 == v3 || v2 == v4 {
 			return nil
 		}
-		root := &LinkedTreeNode{nil, nil, 2, nil, 2, IntKey(k1), v3}
-		child := &LinkedTreeNode{nil, nil, 1, root, 1, IntKey(k2), v4}
+		root := &StandardTreeNode{nil, nil, 2, nil, 2, IntKey(k1), v3}
+		child := &StandardTreeNode{nil, nil, 1, root, 1, IntKey(k2), v4}
 		if k2 < k1 {
 			root.LeftChildNode = child
 		} else {
 			root.RightChildNode = child
 		}
-		tree := &LinkedTree{root, false}
+		tree := &StandardTree{root, false}
 		return tree
 	}
 
@@ -333,25 +333,25 @@ func TestAllowDuplicateKey(t *testing.T) {
 		if k1 == k2 || v1 == v3 || v2 == v4 {
 			return nil
 		}
-		var root *LinkedTreeNode
+		var root *StandardTreeNode
 		if k2 < k1 {
-			root = &LinkedTreeNode{nil, nil, 3, nil, 4, IntKey(k1), v1}
-			lChild := &LinkedTreeNode{nil, nil, 2, root, 2, IntKey(k2), v2}
-			rChild := &LinkedTreeNode{nil, nil, 1, root, 1, IntKey(k1), v3}
-			lrChild := &LinkedTreeNode{nil, nil, 1, lChild, 1, IntKey(k2), v4}
+			root = &StandardTreeNode{nil, nil, 3, nil, 4, IntKey(k1), v1}
+			lChild := &StandardTreeNode{nil, nil, 2, root, 2, IntKey(k2), v2}
+			rChild := &StandardTreeNode{nil, nil, 1, root, 1, IntKey(k1), v3}
+			lrChild := &StandardTreeNode{nil, nil, 1, lChild, 1, IntKey(k2), v4}
 			lChild.RightChildNode = lrChild
 			root.LeftChildNode = lChild
 			root.RightChildNode = rChild
 		} else {
-			root = &LinkedTreeNode{nil, nil, 3, nil, 4, IntKey(k1), v3}
-			lChild := &LinkedTreeNode{nil, nil, 1, root, 1, IntKey(k1), v1}
-			rChild := &LinkedTreeNode{nil, nil, 2, root, 2, IntKey(k2), v2}
-			rrChild := &LinkedTreeNode{nil, nil, 1, rChild, 1, IntKey(k2), v4}
+			root = &StandardTreeNode{nil, nil, 3, nil, 4, IntKey(k1), v3}
+			lChild := &StandardTreeNode{nil, nil, 1, root, 1, IntKey(k1), v1}
+			rChild := &StandardTreeNode{nil, nil, 2, root, 2, IntKey(k2), v2}
+			rrChild := &StandardTreeNode{nil, nil, 1, rChild, 1, IntKey(k2), v4}
 			rChild.RightChildNode = rrChild
 			root.LeftChildNode = lChild
 			root.RightChildNode = rChild
 		}
-		tree := &LinkedTree{root, true}
+		tree := &StandardTree{root, true}
 		return tree
 	}
 
