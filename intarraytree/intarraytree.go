@@ -4,7 +4,7 @@ import "github.com/neetsdkasu/avltree"
 
 const (
 	PositionRootPosition int = iota
-	PositionAllowDuplicateKey
+	PositionDuplicateKeysBehavior
 	PositionIdleNodePosition
 	HeaderSize
 )
@@ -34,11 +34,14 @@ type IntArrayTree struct {
 type IntArrayTreeNode struct {
 	Tree     *IntArrayTree
 	Position int
-	Data     []int
 }
 
 func New(allowDuplicateKeys bool) avltree.Tree {
-	tree := &IntArrayTree{make([]int, HeaderSize)}
+	return NewWithInitialCapacity(HeaderSize, allowDuplicateKeys)
+}
+
+func NewWithInitialCapacity(initialCapacity int, allowDuplicateKeys bool) avltree.Tree {
+	tree := &IntArrayTree{make([]int, initialCapacity)}
 	tree.Init(allowDuplicateKeys)
 	return tree
 }
@@ -52,9 +55,9 @@ func (tree *IntArrayTree) Init(allowDuplicateKeys bool) {
 	array = array[:HeaderSize]
 	array[PositionRootPosition] = NodeIsNothing
 	if allowDuplicateKeys {
-		array[PositionAllowDuplicateKey] = AllowDuplicateKeys
+		array[PositionDuplicateKeysBehavior] = AllowDuplicateKeys
 	} else {
-		array[PositionAllowDuplicateKey] = DisallowDuplicateKeys
+		array[PositionDuplicateKeysBehavior] = DisallowDuplicateKeys
 	}
 	array[PositionIdleNodePosition] = NodeIsNothing
 	tree.Array = array
@@ -83,7 +86,6 @@ func (tree *IntArrayTree) getNode(position int) *IntArrayTreeNode {
 		return &IntArrayTreeNode{
 			Tree:     tree,
 			Position: position,
-			Data:     tree.Array[position : position+NodeSize],
 		}
 	}
 }
@@ -130,13 +132,13 @@ func (tree *IntArrayTree) NewNode(leftChild, rightChild avltree.Node, height int
 		array[PositionIdleNodePosition] = nextIdleNodePosition
 	}
 	node := tree.getNode(newNodePosition)
-	node.Data[OffsetLeftChildPosition] = unwrap(leftChild)
-	node.Data[OffsetRightChildPosition] = unwrap(rightChild)
-	node.Data[OffsetHeight] = height
-	node.Data[OffsetParentPosition] = NodeIsNothing
-	node.Data[OffsetNodeCount] = 1
-	node.Data[OffsetKey] = int(key.(avltree.IntKey))
-	node.Data[OffsetValue] = value.(int)
+	node.set(OffsetLeftChildPosition, unwrap(leftChild))
+	node.set(OffsetRightChildPosition, unwrap(rightChild))
+	node.set(OffsetHeight, height)
+	node.set(OffsetParentPosition, NodeIsNothing)
+	node.set(OffsetNodeCount, 1)
+	node.set(OffsetKey, int(key.(avltree.IntKey)))
+	node.set(OffsetValue, value.(int))
 	node.resetNodeCount()
 	return node
 }
@@ -150,7 +152,7 @@ func (tree *IntArrayTree) SetRoot(newRoot avltree.RealNode) avltree.RealTree {
 
 func (tree *IntArrayTree) AllowDuplicateKeys() bool {
 	tree.init()
-	return tree.Array[PositionAllowDuplicateKey] == AllowDuplicateKeys
+	return tree.Array[PositionDuplicateKeysBehavior] == AllowDuplicateKeys
 }
 
 func (tree *IntArrayTree) NodeCount() int {
@@ -166,15 +168,22 @@ func (tree *IntArrayTree) CleanUpTree() {
 }
 
 func (node *IntArrayTreeNode) Key() avltree.Key {
-	return avltree.IntKey(node.Data[OffsetKey])
+	return avltree.IntKey(node.get(OffsetKey))
 }
 
 func (node *IntArrayTreeNode) Value() interface{} {
-	return node.Data[OffsetValue]
+	return node.get(OffsetValue)
+}
+
+func (node *IntArrayTreeNode) get(offset int) int {
+	return node.Tree.Array[node.Position+offset]
+}
+func (node *IntArrayTreeNode) set(offset, value int) {
+	node.Tree.Array[node.Position+offset] = value
 }
 
 func (node *IntArrayTreeNode) getLeftChild() *IntArrayTreeNode {
-	return node.Tree.getNode(node.Data[OffsetLeftChildPosition])
+	return node.Tree.getNode(node.get(OffsetLeftChildPosition))
 }
 
 func (node *IntArrayTreeNode) LeftChild() avltree.Node {
@@ -182,7 +191,7 @@ func (node *IntArrayTreeNode) LeftChild() avltree.Node {
 }
 
 func (node *IntArrayTreeNode) getRightChild() *IntArrayTreeNode {
-	return node.Tree.getNode(node.Data[OffsetRightChildPosition])
+	return node.Tree.getNode(node.get(OffsetRightChildPosition))
 }
 
 func (node *IntArrayTreeNode) RightChild() avltree.Node {
@@ -190,13 +199,13 @@ func (node *IntArrayTreeNode) RightChild() avltree.Node {
 }
 
 func (node *IntArrayTreeNode) SetValue(newValue interface{}) avltree.Node {
-	node.Data[OffsetValue] = newValue.(int)
+	node.set(OffsetValue, newValue.(int))
 	return node
 }
 
 func (node *IntArrayTreeNode) setParent(position int) {
 	if node != nil {
-		node.Data[OffsetParentPosition] = position
+		node.set(OffsetParentPosition, position)
 	}
 }
 
@@ -204,7 +213,7 @@ func (node *IntArrayTreeNode) Parent() avltree.Node {
 	if node == nil {
 		return nil
 	} else {
-		return node.Tree.getNode(node.Data[OffsetParentPosition]).toNode()
+		return node.Tree.getNode(node.get(OffsetParentPosition)).toNode()
 	}
 }
 
@@ -212,24 +221,22 @@ func (node *IntArrayTreeNode) NodeCount() int {
 	if node == nil {
 		return 0
 	} else {
-		return node.Data[OffsetNodeCount]
+		return node.get(OffsetNodeCount)
 	}
 }
 
 func (node *IntArrayTreeNode) Height() int {
-	return node.Data[OffsetHeight]
+	return node.get(OffsetHeight)
 }
 
 func (node *IntArrayTreeNode) resetNodeCount() {
-	node.Data[OffsetNodeCount] = 1 +
-		node.getLeftChild().NodeCount() +
-		node.getRightChild().NodeCount()
+	node.set(OffsetNodeCount, 1+node.getLeftChild().NodeCount()+node.getRightChild().NodeCount())
 }
 
 func (node *IntArrayTreeNode) SetChildren(newLeftChild, newRightChild avltree.Node, newHeight int) avltree.RealNode {
-	node.Data[OffsetLeftChildPosition] = unwrap(newLeftChild)
-	node.Data[OffsetRightChildPosition] = unwrap(newRightChild)
-	node.Data[OffsetHeight] = newHeight
+	node.set(OffsetLeftChildPosition, unwrap(newLeftChild))
+	node.set(OffsetRightChildPosition, unwrap(newRightChild))
+	node.set(OffsetHeight, newHeight)
 	node.getLeftChild().setParent(node.Position)
 	node.getRightChild().setParent(node.Position)
 	node.resetNodeCount()
@@ -237,6 +244,6 @@ func (node *IntArrayTreeNode) SetChildren(newLeftChild, newRightChild avltree.No
 }
 
 func (node *IntArrayTreeNode) Set(newLeftChild, newRightChild avltree.Node, newHeight int, newValue interface{}) avltree.RealNode {
-	node.Data[OffsetValue] = newValue.(int)
+	node.SetValue(newValue)
 	return node.SetChildren(newLeftChild, newRightChild, newHeight)
 }
