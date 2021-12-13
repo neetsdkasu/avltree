@@ -1769,29 +1769,29 @@ func descDeleteRange(root Node, bounds keyBounds, callBack DeleteIterateCallBack
 	return newRoot, deleted, breakIteration
 }
 
-func (aNode alterNode) Node() Node {
+func (aNode *alterNode) Node() Node {
 	return aNode.node
 }
 
-func (aNode alterNode) Key() Key {
+func (aNode *alterNode) Key() Key {
 	return aNode.node.Key()
 }
 
-func (aNode alterNode) Value() interface{} {
+func (aNode *alterNode) Value() interface{} {
 	return aNode.node.Value()
 }
 
-func (alterNode) Keep() (request AlterRequest) {
+func (*alterNode) Keep() (request AlterRequest) {
 	return
 }
 
-func (alterNode) Replace(newValue interface{}) (request AlterRequest) {
+func (*alterNode) Replace(newValue interface{}) (request AlterRequest) {
 	request.replaceValue = true
 	request.newValue = newValue
 	return
 }
 
-func (alterNode) Delete() (request AlterRequest) {
+func (*alterNode) Delete() (request AlterRequest) {
 	request.deleteNode = true
 	return
 }
@@ -1848,7 +1848,7 @@ func alter(node Node, key Key, callBack AlterNodeCallBack) (newNode, deleted Nod
 			return node, nil, false
 		}
 	}
-	request := callBack(alterNode{node})
+	request := callBack(&alterNode{node})
 	switch {
 	case request.isKeepRequest():
 		return node, nil, false
@@ -1888,7 +1888,7 @@ func ascAlterIterate(root Node, callBack AlterIterateCallBack) (newRoot Node, de
 		return newRoot, leftDeleted, leftAnyChanged, breakIteration
 	}
 
-	request, breakIteration := callBack(alterNode{root})
+	request, breakIteration := callBack(&alterNode{root})
 	if breakIteration {
 		deleted = leftDeleted
 		switch {
@@ -1964,7 +1964,7 @@ func descAlterIterate(root Node, callBack AlterIterateCallBack) (newRoot Node, d
 		return newRoot, rightDeleted, rightAnyChanged, breakIteration
 	}
 
-	request, breakIteration := callBack(alterNode{root})
+	request, breakIteration := callBack(&alterNode{root})
 	if breakIteration {
 		deleted = rightDeleted
 		switch {
@@ -2051,7 +2051,7 @@ func ascAlterRange(root Node, bounds keyBounds, callBack AlterIterateCallBack) (
 
 	upper := bounds.checkUpper(key)
 	if lower.includeKey() && upper.includeKey() {
-		request, breakIteration = callBack(alterNode{root})
+		request, breakIteration = callBack(&alterNode{root})
 		if breakIteration {
 			deleted = leftDeleted
 			switch {
@@ -2140,7 +2140,7 @@ func descAlterRange(root Node, bounds keyBounds, callBack AlterIterateCallBack) 
 
 	lower := bounds.checkLower(key)
 	if lower.includeKey() && upper.includeKey() {
-		request, breakIteration = callBack(alterNode{root})
+		request, breakIteration = callBack(&alterNode{root})
 		if breakIteration {
 			deleted = rightDeleted
 			switch {
