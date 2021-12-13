@@ -4566,3 +4566,242 @@ func TestAlterAll(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestInsertAndDelete3(t *testing.T) {
+
+	f := func(k, v int) Tree {
+		tree := New(false)
+		avltree.Insert(tree, false, IntKey(k), v)
+		avltree.Delete(tree, IntKey(k))
+		return tree
+	}
+
+	g := func(k, v int) Tree {
+		array := make([]int, HeaderSize+NodeSize)
+		node1 := HeaderSize
+		array[PositionRootPosition] = NodeIsNothing
+		array[PositionDuplicateKeysBehavior] = DisallowDuplicateKeys
+		array[PositionIdleNodePosition] = node1
+		array[node1+OffsetLeftChildPosition] = NodeIsNothing
+		array[node1+OffsetRightChildPosition] = NodeIsNothing
+		array[node1+OffsetHeight] = 1
+		array[node1+OffsetParentPosition] = NodeIsNothing
+		array[node1+OffsetNodeCount] = 1
+		array[node1+OffsetKey] = k
+		array[node1+OffsetValue] = v
+		return &IntArrayTree{array}
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestInsertAndDelete4(t *testing.T) {
+
+	f := func(k1, v1, k2, v2 int) Tree {
+		tree := New(false)
+		avltree.Insert(tree, false, IntKey(k1), v1)
+		avltree.Delete(tree, IntKey(k1))
+		avltree.Insert(tree, false, IntKey(k2), v2)
+		return tree
+	}
+
+	g := func(k1, v1, k2, v2 int) Tree {
+		array := make([]int, HeaderSize+NodeSize)
+		node1 := HeaderSize
+		array[PositionRootPosition] = node1
+		array[PositionDuplicateKeysBehavior] = DisallowDuplicateKeys
+		array[PositionIdleNodePosition] = NodeIsNothing
+		array[node1+OffsetLeftChildPosition] = NodeIsNothing
+		array[node1+OffsetRightChildPosition] = NodeIsNothing
+		array[node1+OffsetHeight] = 1
+		array[node1+OffsetParentPosition] = NodeIsNothing
+		array[node1+OffsetNodeCount] = 1
+		array[node1+OffsetKey] = k2
+		array[node1+OffsetValue] = v2
+		return &IntArrayTree{array}
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestInsertAndDelete5(t *testing.T) {
+
+	f := func(k1, v1, k2, v2, k3, v3 int) Tree {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		tree := New(false)
+		avltree.Insert(tree, false, IntKey(k1), v1)
+		avltree.Insert(tree, false, IntKey(k2), v2)
+		avltree.Delete(tree, IntKey(k1))
+		avltree.Delete(tree, IntKey(k2))
+		avltree.Insert(tree, false, IntKey(k3), v3)
+		return tree
+	}
+
+	g := func(k1, v1, k2, v2, k3, v3 int) Tree {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		array := make([]int, HeaderSize+NodeSize*2)
+		node1 := HeaderSize
+		node2 := node1 + NodeSize
+		array[PositionRootPosition] = node2
+		array[PositionDuplicateKeysBehavior] = DisallowDuplicateKeys
+		array[PositionIdleNodePosition] = node1
+		array[node1+OffsetLeftChildPosition] = NodeIsNothing
+		array[node1+OffsetRightChildPosition] = node2
+		array[node1+OffsetHeight] = 2
+		array[node1+OffsetParentPosition] = NodeIsNothing
+		array[node1+OffsetNodeCount] = 2
+		array[node1+OffsetKey] = k1
+		array[node1+OffsetValue] = v1
+		array[node2+OffsetLeftChildPosition] = NodeIsNothing
+		array[node2+OffsetRightChildPosition] = NodeIsNothing
+		array[node2+OffsetHeight] = 1
+		array[node2+OffsetParentPosition] = NodeIsNothing
+		array[node2+OffsetNodeCount] = 1
+		array[node2+OffsetKey] = k3
+		array[node2+OffsetValue] = v3
+		return &IntArrayTree{array}
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestInsertAndDelete6(t *testing.T) {
+
+	f := func(k1, v1, k2, v2, k3, v3 int) Tree {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		tree := New(false)
+		avltree.Insert(tree, false, IntKey(k1), v1)
+		avltree.Insert(tree, false, IntKey(k2), v2)
+		avltree.Delete(tree, IntKey(k2))
+		avltree.Delete(tree, IntKey(k1))
+		avltree.Insert(tree, false, IntKey(k3), v3)
+		return tree
+	}
+
+	g := func(k1, v1, k2, v2, k3, v3 int) Tree {
+		if k2 < k1 {
+			k1, k2 = k2, k1
+		}
+		array := make([]int, HeaderSize+NodeSize*2)
+		node1 := HeaderSize
+		node2 := node1 + NodeSize
+		array[PositionRootPosition] = node1
+		array[PositionDuplicateKeysBehavior] = DisallowDuplicateKeys
+		array[PositionIdleNodePosition] = node2
+		array[node1+OffsetLeftChildPosition] = NodeIsNothing
+		array[node1+OffsetRightChildPosition] = NodeIsNothing
+		array[node1+OffsetHeight] = 1
+		array[node1+OffsetParentPosition] = NodeIsNothing
+		array[node1+OffsetNodeCount] = 1
+		array[node1+OffsetKey] = k3
+		array[node1+OffsetValue] = v3
+		array[node2+OffsetLeftChildPosition] = NodeIsNothing
+		array[node2+OffsetRightChildPosition] = NodeIsNothing
+		array[node2+OffsetHeight] = 1
+		array[node2+OffsetParentPosition] = node1
+		array[node2+OffsetNodeCount] = 1
+		array[node2+OffsetKey] = k2
+		array[node2+OffsetValue] = v2
+		return &IntArrayTree{array}
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestInsertAndDelete7(t *testing.T) {
+
+	f := func(k1, v1, k2, v2, k3, v3 int) Tree {
+		ks := []int{k1, k2, k3}
+		sort.Ints(ks)
+		k1, k2, k3 = ks[0], ks[1], ks[2]
+		tree := New(false)
+		avltree.Insert(tree, false, IntKey(k1), v1)
+		avltree.Insert(tree, false, IntKey(k2), v2)
+		avltree.Insert(tree, false, IntKey(k3), v3)
+		avltree.Delete(tree, IntKey(k1))
+		avltree.Delete(tree, IntKey(k3))
+		avltree.Delete(tree, IntKey(k2))
+		return tree
+	}
+
+	g := func(k1, v1, k2, v2, k3, v3 int) Tree {
+		ks := []int{k1, k2, k3}
+		sort.Ints(ks)
+		k1, k2, k3 = ks[0], ks[1], ks[2]
+		array := make([]int, HeaderSize+NodeSize*3)
+		node1 := HeaderSize
+		node2 := node1 + NodeSize
+		node3 := node2 + NodeSize
+		array[PositionRootPosition] = NodeIsNothing
+		array[PositionDuplicateKeysBehavior] = DisallowDuplicateKeys
+		array[PositionIdleNodePosition] = node2
+		array[node1+OffsetLeftChildPosition] = NodeIsNothing
+		array[node1+OffsetRightChildPosition] = NodeIsNothing
+		array[node1+OffsetHeight] = 1
+		array[node1+OffsetParentPosition] = node2
+		array[node1+OffsetNodeCount] = 1
+		array[node1+OffsetKey] = k1
+		array[node1+OffsetValue] = v1
+		array[node2+OffsetLeftChildPosition] = node3
+		array[node2+OffsetRightChildPosition] = NodeIsNothing
+		array[node2+OffsetHeight] = 1
+		array[node2+OffsetParentPosition] = NodeIsNothing
+		array[node2+OffsetNodeCount] = 1
+		array[node2+OffsetKey] = k2
+		array[node2+OffsetValue] = v2
+		array[node3+OffsetLeftChildPosition] = node1
+		array[node3+OffsetRightChildPosition] = NodeIsNothing
+		array[node3+OffsetHeight] = 1
+		array[node3+OffsetParentPosition] = node2
+		array[node3+OffsetNodeCount] = 1
+		array[node3+OffsetKey] = k3
+		array[node3+OffsetValue] = v3
+		return &IntArrayTree{array}
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestClear(t *testing.T) {
+
+	f := func(list []keyAndValue, allowDuplicateKeys bool) Tree {
+		tree := New(allowDuplicateKeys)
+		for _, kv := range list {
+			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
+		}
+		avltree.Clear(tree)
+		return tree
+	}
+
+	g := func(list []keyAndValue, allowDuplicateKeys bool) Tree {
+		array := make([]int, HeaderSize)
+		array[PositionRootPosition] = NodeIsNothing
+		if allowDuplicateKeys {
+			array[PositionDuplicateKeysBehavior] = AllowDuplicateKeys
+		} else {
+			array[PositionDuplicateKeysBehavior] = DisallowDuplicateKeys
+		}
+		array[PositionIdleNodePosition] = NodeIsNothing
+		return &IntArrayTree{array}
+	}
+
+	if err := quick.CheckEqual(f, g, nil); err != nil {
+		t.Fatal(err)
+	}
+}
