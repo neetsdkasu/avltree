@@ -612,7 +612,7 @@ func TestMin(t *testing.T) {
 		for _, kv := range list {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
-		if node, ok := avltree.Min(tree); ok {
+		if node := avltree.Min(tree); node != nil {
 			result := []int{
 				int(node.Key().(IntKey)),
 				node.Value().(int),
@@ -651,7 +651,7 @@ func TestMax(t *testing.T) {
 		for _, kv := range list {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
-		if node, ok := avltree.Max(tree); ok {
+		if node := avltree.Max(tree); node != nil {
 			result := []int{
 				int(node.Key().(IntKey)),
 				node.Value().(int),
@@ -1844,10 +1844,9 @@ func TestMinAll(t *testing.T) {
 			avltree.Insert(tree, false, IntKey(key%keymax), kv.Value)
 		}
 		result := []int(nil)
-		if nodes, ok := avltree.MinAll(tree); ok {
-			for _, node := range nodes {
-				result = append(result, node.Value().(int))
-			}
+		nodes := avltree.MinAll(tree)
+		for _, node := range nodes {
+			result = append(result, node.Value().(int))
 		}
 		return result
 	}
@@ -1891,10 +1890,9 @@ func TestMaxAll(t *testing.T) {
 			avltree.Insert(tree, false, IntKey(key%keymax), kv.Value)
 		}
 		result := []int(nil)
-		if nodes, ok := avltree.MaxAll(tree); ok {
-			for _, node := range nodes {
-				result = append(result, node.Value().(int))
-			}
+		nodes := avltree.MaxAll(tree)
+		for _, node := range nodes {
+			result = append(result, node.Value().(int))
 		}
 		return result
 	}

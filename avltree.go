@@ -277,10 +277,10 @@ func CountRange(tree Tree, lower, upper Key) int {
 	}
 }
 
-func Min(tree Tree) (minimum Node, ok bool) {
+func Min(tree Tree) (minimum Node) {
 	node := tree.Root()
 	if node == nil {
-		return nil, false
+		return nil
 	}
 	for {
 		leftChild := node.LeftChild()
@@ -289,13 +289,13 @@ func Min(tree Tree) (minimum Node, ok bool) {
 		}
 		node = leftChild
 	}
-	return node, true
+	return node
 }
 
-func Max(tree Tree) (maximum Node, ok bool) {
+func Max(tree Tree) (maximum Node) {
 	node := tree.Root()
 	if node == nil {
-		return nil, false
+		return nil
 	}
 	for {
 		rightChild := node.RightChild()
@@ -304,7 +304,7 @@ func Max(tree Tree) (maximum Node, ok bool) {
 		}
 		node = rightChild
 	}
-	return node, true
+	return node
 }
 
 func DeleteAll(tree Tree, key Key) (modified Tree, values []KeyAndValue) {
@@ -340,23 +340,23 @@ func FindAll(tree Tree, key Key) (nodes []Node) {
 	return nodes
 }
 
-func MinAll(tree Tree) (minimums []Node, ok bool) {
-	minimum, ok := Min(tree)
-	if !ok {
-		return nil, false
+func MinAll(tree Tree) (minimums []Node) {
+	minimum := Min(tree)
+	if minimum == nil {
+		return nil
 	}
 	key := minimum.Key()
 	RangeIterate(tree, false, key, key, func(node Node) (breakIteration bool) {
 		minimums = append(minimums, node)
 		return
 	})
-	return minimums, true
+	return minimums
 }
 
-func MaxAll(tree Tree) (maximums []Node, ok bool) {
-	maximum, ok := Max(tree)
-	if !ok {
-		return nil, false
+func MaxAll(tree Tree) (maximums []Node) {
+	maximum := Max(tree)
+	if maximum == nil {
+		return nil
 	}
 	key := maximum.Key()
 	// 最大側は descOrder にすべきか…？
@@ -365,7 +365,7 @@ func MaxAll(tree Tree) (maximums []Node, ok bool) {
 		maximums = append(maximums, node)
 		return
 	})
-	return maximums, true
+	return maximums
 }
 
 type keyAndValue struct {
