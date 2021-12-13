@@ -206,197 +206,197 @@ func TestKeyOrdering_GreaterThanOtherKey(t *testing.T) {
 
 func TestInsert(t *testing.T) {
 	_ = Insert
-	t.Skip("avltree.Insert のテストをまだ実装していない")
+	t.Skip("avltree.Insert のテストは未実装")
 }
 
 func TestDelete(t *testing.T) {
 	_ = Delete
-	t.Skip("avltree.Delete のテストをまだ実装していない")
+	t.Skip("avltree.Delete のテストは未実装")
 }
 
 func TestUpdate(t *testing.T) {
 	_ = Update
-	t.Skip("avltree.Update のテストをまだ実装していない")
+	t.Skip("avltree.Update のテストは未実装")
 }
 
 func TestReplace(t *testing.T) {
 	_ = Replace
-	t.Skip("avltree.Replace のテストをまだ実装していない")
+	t.Skip("avltree.Replace のテストは未実装")
 }
 
 func TestAlter(t *testing.T) {
 	_ = Alter
-	t.Skip("avltree.Alter のテストをまだ実装していない")
+	t.Skip("avltree.Alter のテストは未実装")
 }
 
 func TestClear(t *testing.T) {
 	_ = Clear
-	t.Skip("avltree.Clear のテストをまだ実装していない")
+	t.Skip("avltree.Clear のテストは未実装")
 }
 
 func TestRelease(t *testing.T) {
 	_ = Release
-	t.Skip("avltree.Release のテストをまだ実装していない")
+	t.Skip("avltree.Release のテストは未実装")
 }
 
 func TestFind(t *testing.T) {
 	_ = Find
-	t.Skip("avltree.Find のテストをまだ実装していない")
+	t.Skip("avltree.Find のテストは未実装")
 }
 
 func TestIterate(t *testing.T) {
 	_ = Iterate
-	t.Skip("avltree.Iterate のテストをまだ実装していない")
+	t.Skip("avltree.Iterate のテストは未実装")
 }
 
 func TestRange(t *testing.T) {
 	_ = Range
-	t.Skip("avltree.Range のテストをまだ実装していない")
+	t.Skip("avltree.Range のテストは未実装")
 }
 
 func TestRangeIterate(t *testing.T) {
 	_ = RangeIterate
-	t.Skip("avltree.RangeIterate のテストをまだ実装していない")
+	t.Skip("avltree.RangeIterate のテストは未実装")
 }
 
 func TestCount(t *testing.T) {
 	_ = Count
-	t.Skip("avltree.Count のテストをまだ実装していない")
+	t.Skip("avltree.Count のテストは未実装")
 }
 
 func TestCountRange(t *testing.T) {
 	_ = CountRange
-	t.Skip("avltree.CountRange のテストをまだ実装していない")
+	t.Skip("avltree.CountRange のテストは未実装")
 }
 
 func TestMin(t *testing.T) {
 	_ = Min
-	t.Skip("avltree.Min のテストをまだ実装していない")
+	t.Skip("avltree.Min のテストは未実装")
 }
 
 func TestMax(t *testing.T) {
 	_ = Max
-	t.Skip("avltree.Max のテストをまだ実装していない")
+	t.Skip("avltree.Max のテストは未実装")
 }
 
 func TestDeleteAll(t *testing.T) {
 	_ = DeleteAll
-	t.Skip("avltree.DeleteAll のテストをまだ実装していない")
+	t.Skip("avltree.DeleteAll のテストは未実装")
 }
 
 func TestUpdateAll(t *testing.T) {
 	_ = UpdateAll
-	t.Skip("avltree.UpdateAll のテストをまだ実装していない")
+	t.Skip("avltree.UpdateAll のテストは未実装")
 }
 
 func TestReplaceAll(t *testing.T) {
 	_ = ReplaceAll
-	t.Skip("avltree.ReplaceAll のテストをまだ実装していない")
+	t.Skip("avltree.ReplaceAll のテストは未実装")
 }
 
 func TestAlterAll(t *testing.T) {
 	_ = AlterAll
-	t.Skip("avltree.AlterAll のテストをまだ実装していない")
+	t.Skip("avltree.AlterAll のテストは未実装")
 }
 
 func TestFindAll(t *testing.T) {
 	_ = FindAll
-	t.Skip("avltree.FindAll のテストをまだ実装していない")
+	t.Skip("avltree.FindAll のテストは未実装")
 }
 
 func TestMinAll(t *testing.T) {
 	_ = MinAll
-	t.Skip("avltree.MinAll のテストをまだ実装していない")
+	t.Skip("avltree.MinAll のテストは未実装")
 }
 
 func TestMaxAll(t *testing.T) {
 	_ = MaxAll
-	t.Skip("avltree.MaxAll のテストをまだ実装していない")
+	t.Skip("avltree.MaxAll のテストは未実装")
 }
 
 func TestDeleteIterate(t *testing.T) {
 	_ = DeleteIterate
-	t.Skip("avltree.DeleteIterate のテストをまだ実装していない")
+	t.Skip("avltree.DeleteIterate のテストは未実装")
 }
 
 func TestDeleteRange(t *testing.T) {
 	_ = DeleteRange
-	t.Skip("avltree.DeleteRange のテストをまだ実装していない")
+	t.Skip("avltree.DeleteRange のテストは未実装")
 }
 
 func TestDeleteRangeIterate(t *testing.T) {
 	_ = DeleteRangeIterate
-	t.Skip("avltree.DeleteRangeIterate のテストをまだ実装していない")
+	t.Skip("avltree.DeleteRangeIterate のテストは未実装")
 }
 
 func TestUpdateIterate(t *testing.T) {
 	_ = UpdateIterate
-	t.Skip("avltree.UpdateIterate のテストをまだ実装していない")
+	t.Skip("avltree.UpdateIterate のテストは未実装")
 }
 
 func TestUpdateRange(t *testing.T) {
 	_ = UpdateRange
-	t.Skip("avltree.UpdateRange のテストをまだ実装していない")
+	t.Skip("avltree.UpdateRange のテストは未実装")
 }
 
 func TestUpdateRangeIterate(t *testing.T) {
 	_ = UpdateRangeIterate
-	t.Skip("avltree.UpdateRangeIterate のテストをまだ実装していない")
+	t.Skip("avltree.UpdateRangeIterate のテストは未実装")
 }
 
 func TestReplaceRange(t *testing.T) {
 	_ = ReplaceRange
-	t.Skip("avltree.ReplaceRange のテストをまだ実装していない")
+	t.Skip("avltree.ReplaceRange のテストは未実装")
 }
 
 func TestAlterIterate(t *testing.T) {
 	_ = AlterIterate
-	t.Skip("avltree.AlterIterate のテストをまだ実装していない")
+	t.Skip("avltree.AlterIterate のテストは未実装")
 }
 
 func TestAlterRange(t *testing.T) {
 	_ = AlterRange
-	t.Skip("avltree.AlterRange のテストをまだ実装していない")
+	t.Skip("avltree.AlterRange のテストは未実装")
 }
 
 func TestAlterRangeIterate(t *testing.T) {
 	_ = AlterRangeIterate
-	t.Skip("avltree.AlterRangeIterate のテストをまだ実装していない")
+	t.Skip("avltree.AlterRangeIterate のテストは未実装")
 }
 
 func TestInner_countNode(t *testing.T) {
 	_ = countNode
-	t.Skip("countNode のテストをまだ実装していない")
+	t.Skip("countNode のテストは未実装")
 }
 
 func TestInner_countRange(t *testing.T) {
 	_ = countRange
-	t.Skip("countRange のテストをまだ実装していない")
+	t.Skip("countRange のテストは未実装")
 }
 
 func TestInner_countExtendedRange(t *testing.T) {
 	_ = countExtendedRange
-	t.Skip("countExtendedRange のテストをまだ実装していない")
+	t.Skip("countExtendedRange のテストは未実装")
 }
 
 func TestInner_getHeight(t *testing.T) {
 	_ = getHeight
-	t.Skip("getHeight のテストをまだ実装していない")
+	t.Skip("getHeight のテストは未実装")
 }
 
 func TestInner_checkBalance(t *testing.T) {
 	_ = checkBalance
-	t.Skip("checkBalance のテストをまだ実装していない")
+	t.Skip("checkBalance のテストは未実装")
 }
 
 func TestInner_compareNodeHeight(t *testing.T) {
 	_ = compareNodeHeight
-	t.Skip("compareNodeHeight のテストをまだ実装していない")
+	t.Skip("compareNodeHeight のテストは未実装")
 }
 
 func TestInner_compareChildHeight(t *testing.T) {
 	_ = compareChildHeight
-	t.Skip("compareChildHeight のテストをまだ実装していない")
+	t.Skip("compareChildHeight のテストは未実装")
 }
 
 func TestInner_intMax(t *testing.T) {
@@ -412,111 +412,111 @@ func TestInner_intMax(t *testing.T) {
 
 func TestInner_calcNewHeight(t *testing.T) {
 	_ = calcNewHeight
-	t.Skip("calcNewHeight のテストをまだ実装していない")
+	t.Skip("calcNewHeight のテストは未実装")
 }
 
 func TestInner_setChildren(t *testing.T) {
 	_ = setChildren
-	t.Skip("setChildren のテストをまだ実装していない")
+	t.Skip("setChildren のテストは未実装")
 }
 
 func TestInner_setLeftChild(t *testing.T) {
 	_ = setLeftChild
-	t.Skip("setLeftChild のテストをまだ実装していない")
+	t.Skip("setLeftChild のテストは未実装")
 }
 
 func TestInner_setRightChild(t *testing.T) {
 	_ = setRightChild
-	t.Skip("setRightChild のテストをまだ実装していない")
+	t.Skip("setRightChild のテストは未実装")
 }
 
 func TestInner_resetNode(t *testing.T) {
 	_ = resetNode
-	t.Skip("resetNode のテストをまだ実装していない")
+	t.Skip("resetNode のテストは未実装")
 }
 
 func TestInner_insertHelper_newNode(t *testing.T) {
 	var helper insertHelper
 	_ = helper.newNode
-	t.Skip("insertHelper.newNode のテストをまだ実装していない")
+	t.Skip("insertHelper.newNode のテストは未実装")
 }
 
 func TestInner_insertHelper_compareKey(t *testing.T) {
 	var helper insertHelper
 	_ = helper.compareKey
-	t.Skip("insertHelper.compareKey のテストをまだ実装していない")
+	t.Skip("insertHelper.compareKey のテストは未実装")
 }
 
 func TestInner_insertHelper_allowDuplicateKeys(t *testing.T) {
 	var helper insertHelper
 	_ = helper.allowDuplicateKeys
-	t.Skip("insertHelper.allowDuplicateKeys のテストをまだ実装していない")
+	t.Skip("insertHelper.allowDuplicateKeys のテストは未実装")
 }
 
 func TestInner_insertHelper_insertTo(t *testing.T) {
 	var helper insertHelper
 	_ = helper.insertTo
-	t.Skip("insertHelper.insertTo のテストをまだ実装していない")
+	t.Skip("insertHelper.insertTo のテストは未実装")
 }
 
 func TestInner_rotate(t *testing.T) {
 	_ = rotate
-	t.Skip("rotate のテストをまだ実装していない")
+	t.Skip("rotate のテストは未実装")
 }
 
 func TestInner_rotateRight(t *testing.T) {
 	_ = rotateRight
-	t.Skip("rotateRight のテストをまだ実装していない")
+	t.Skip("rotateRight のテストは未実装")
 }
 
 func TestInner_rotateLeft(t *testing.T) {
 	_ = rotateLeft
-	t.Skip("rotateLeft のテストをまだ実装していない")
+	t.Skip("rotateLeft のテストは未実装")
 }
 
 func TestInner_removeNode(t *testing.T) {
 	_ = removeNode
-	t.Skip("removeNode のテストをまだ実装していない")
+	t.Skip("removeNode のテストは未実装")
 }
 
 func TestInner_removeMin(t *testing.T) {
 	_ = removeMin
-	t.Skip("removeMin のテストをまだ実装していない")
+	t.Skip("removeMin のテストは未実装")
 }
 
 func TestInner_removeMax(t *testing.T) {
 	_ = removeMax
-	t.Skip("removeMax のテストをまだ実装していない")
+	t.Skip("removeMax のテストは未実装")
 }
 
 func TestInner_ascIterateNode(t *testing.T) {
 	_ = ascIterateNode
-	t.Skip("ascIterateNode のテストをまだ実装していない")
+	t.Skip("ascIterateNode のテストは未実装")
 }
 
 func TestInner_descIterateNode(t *testing.T) {
 	_ = descIterateNode
-	t.Skip("descIterateNode のテストをまだ実装していない")
+	t.Skip("descIterateNode のテストは未実装")
 }
 
 func TestInner_newKeyBounds(t *testing.T) {
 	_ = newKeyBounds
-	t.Skip("newKeyBounds のテストをまだ実装していない")
+	t.Skip("newKeyBounds のテストは未実装")
 }
 
 func TestInner_upperBound(t *testing.T) {
 	var _ upperBound
-	t.Skip("upperBound のテストをまだ実装していない")
+	t.Skip("upperBound のテストは未実装")
 }
 
 func TestInner_lowerBound(t *testing.T) {
 	var _ lowerBound
-	t.Skip("lowerBound のテストをまだ実装していない")
+	t.Skip("lowerBound のテストは未実装")
 }
 
 func TestInner_bothBounds(t *testing.T) {
 	var _ bothBounds
-	t.Skip("bothBounds のテストをまだ実装していない")
+	t.Skip("bothBounds のテストは未実装")
 }
 
 func TestInner_noBoundsChecker(t *testing.T) {
@@ -539,100 +539,100 @@ func TestInner_noBoundsChecker(t *testing.T) {
 
 func TestInner_upperBoundsChecker(t *testing.T) {
 	var _ upperBoundsChecker
-	t.Skip("upperBoundsChecker のテストをまだ実装していない")
+	t.Skip("upperBoundsChecker のテストは未実装")
 }
 
 func TestInner_lowerBoundsChecker(t *testing.T) {
 	var _ lowerBoundsChecker
-	t.Skip("lowerBoundsChecker のテストをまだ実装していない")
+	t.Skip("lowerBoundsChecker のテストは未実装")
 }
 
 func TestInner_ascRangeNode(t *testing.T) {
 	_ = ascRangeNode
-	t.Skip("ascRangeNode のテストをまだ実装していない")
+	t.Skip("ascRangeNode のテストは未実装")
 }
 
 func TestInner_descRangeNode(t *testing.T) {
 	_ = descRangeNode
-	t.Skip("descRangeNode のテストをまだ実装していない")
+	t.Skip("descRangeNode のテストは未実装")
 }
 
 func TestInner_updateValue(t *testing.T) {
 	_ = updateValue
-	t.Skip("updateValue のテストをまだ実装していない")
+	t.Skip("updateValue のテストは未実装")
 }
 
 func TestInner_ascUpdateIterate(t *testing.T) {
 	_ = ascUpdateIterate
-	t.Skip("ascUpdateIterate のテストをまだ実装していない")
+	t.Skip("ascUpdateIterate のテストは未実装")
 }
 
 func TestInner_descUpdateIterate(t *testing.T) {
 	_ = descUpdateIterate
-	t.Skip("descUpdateIterate のテストをまだ実装していない")
+	t.Skip("descUpdateIterate のテストは未実装")
 }
 
 func TestInner_ascUpdateRange(t *testing.T) {
 	_ = ascUpdateRange
-	t.Skip("ascUpdateRange のテストをまだ実装していない")
+	t.Skip("ascUpdateRange のテストは未実装")
 }
 
 func TestInner_descUpdateRange(t *testing.T) {
 	_ = descUpdateRange
-	t.Skip("descUpdateRange のテストをまだ実装していない")
+	t.Skip("descUpdateRange のテストは未実装")
 }
 
 func TestInner_ascDeleteIterate(t *testing.T) {
 	_ = ascDeleteIterate
-	t.Skip("ascDeleteIterate のテストをまだ実装していない")
+	t.Skip("ascDeleteIterate のテストは未実装")
 }
 
 func TestInner_descDeleteIterate(t *testing.T) {
 	_ = descDeleteIterate
-	t.Skip("descDeleteIterate のテストをまだ実装していない")
+	t.Skip("descDeleteIterate のテストは未実装")
 }
 
 func TestInner_ascDeleteRange(t *testing.T) {
 	_ = ascDeleteRange
-	t.Skip("ascDeleteRange のテストをまだ実装していない")
+	t.Skip("ascDeleteRange のテストは未実装")
 }
 
 func TestInner_descDeleteRange(t *testing.T) {
 	_ = descDeleteRange
-	t.Skip("descDeleteRange のテストをまだ実装していない")
+	t.Skip("descDeleteRange のテストは未実装")
 }
 
 func TestInner_alterNode(t *testing.T) {
 	var _ alterNode
-	t.Skip("alterNode のテストをまだ実装していない")
+	t.Skip("alterNode のテストは未実装")
 }
 
 func TestAlterRequest(t *testing.T) {
 	var _ AlterRequest
-	t.Skip("AlterRequest のテストをまだ実装していない")
+	t.Skip("AlterRequest のテストは未実装")
 }
 
 func TestInner_alter(t *testing.T) {
 	_ = alter
-	t.Skip("alter のテストをまだ実装していない")
+	t.Skip("alter のテストは未実装")
 }
 
 func TestInner_ascAlterIterat(t *testing.T) {
 	_ = ascAlterIterate
-	t.Skip("ascAlterIterate のテストをまだ実装していない")
+	t.Skip("ascAlterIterate のテストは未実装")
 }
 
 func TestInner_descAlterIterat(t *testing.T) {
 	_ = descAlterIterate
-	t.Skip("descAlterIterate のテストをまだ実装していない")
+	t.Skip("descAlterIterate のテストは未実装")
 }
 
 func TestInner_ascAlterRange(t *testing.T) {
 	_ = ascAlterRange
-	t.Skip("ascAlterRange のテストをまだ実装していない")
+	t.Skip("ascAlterRange のテストは未実装")
 }
 
 func TestInner_descAlterRange(t *testing.T) {
 	_ = descAlterRange
-	t.Skip("descAlterRange のテストをまだ実装していない")
+	t.Skip("descAlterRange のテストは未実装")
 }
