@@ -214,7 +214,7 @@ func Release(tree *Tree) {
 	*tree = nil
 }
 
-func Find(tree Tree, key Key) (node Node, ok bool) {
+func Find(tree Tree, key Key) (node Node) {
 	node = tree.Root()
 	for node != nil {
 		cmp := key.CompareTo(node.Key())
@@ -224,10 +224,10 @@ func Find(tree Tree, key Key) (node Node, ok bool) {
 		case cmp.GreaterThan():
 			node = node.RightChild()
 		default:
-			return node, true
+			return node
 		}
 	}
-	return nil, false
+	return nil
 }
 
 func Iterate(tree Tree, descOrder bool, callBack IterateCallBack) (ok bool) {
@@ -330,14 +330,14 @@ func AlterAll(tree Tree, key Key, callBack AlterNodeCallBack) (modified Tree, de
 	})
 }
 
-func FindAll(tree Tree, key Key) (nodes []Node, ok bool) {
+func FindAll(tree Tree, key Key) (nodes []Node) {
 	// FindAllを頻繁に呼び出すでもない限りは
 	// Range呼び出しのオーバーヘッドなんて気にするほどのものではないはず
 	RangeIterate(tree, false, key, key, func(node Node) (breakIteration bool) {
 		nodes = append(nodes, node)
 		return
 	})
-	return nodes, 0 < len(nodes)
+	return nodes
 }
 
 func MinAll(tree Tree) (minimums []Node, ok bool) {

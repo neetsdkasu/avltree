@@ -494,8 +494,8 @@ func TestFind(t *testing.T) {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
 		for _, kv := range list[1:] {
-			node, ok := avltree.Find(tree, IntKey(kv.Key))
-			if !ok {
+			node := avltree.Find(tree, IntKey(kv.Key))
+			if node == nil {
 				return kv
 			}
 			if kv.Key != int(node.Key().(IntKey)) {
@@ -1582,10 +1582,9 @@ func TestFindAll(t *testing.T) {
 		result := [][]int{}
 		for key := 0; key < keymax; key++ {
 			values := []int(nil)
-			if nodes, ok := avltree.FindAll(tree, IntKey(key)); ok {
-				for _, node := range nodes {
-					values = append(values, node.Value().(int))
-				}
+			nodes := avltree.FindAll(tree, IntKey(key))
+			for _, node := range nodes {
+				values = append(values, node.Value().(int))
 			}
 			result = append(result, values)
 		}
@@ -1712,7 +1711,7 @@ func TestUpdateValueByFind(t *testing.T) {
 			avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
 		for _, kv := range list {
-			node, _ := avltree.Find(tree, IntKey(kv.Key))
+			node := avltree.Find(tree, IntKey(kv.Key))
 			value := node.Value().(int)
 			newValue := value >> 1
 			node.SetValue(newValue)
