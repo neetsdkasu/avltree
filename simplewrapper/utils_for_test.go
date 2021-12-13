@@ -10,11 +10,10 @@ import (
 var cfg1000 = &quick.Config{MaxCount: 1000}
 
 type (
-	IntKey   = avltree.IntKey
-	Key      = avltree.Key
-	Node     = avltree.Node
-	RealNode = avltree.RealNode
-	Tree     = avltree.Tree
+	IntKey = avltree.IntKey
+	Key    = avltree.Key
+	Node   = avltree.Node
+	Tree   = avltree.Tree
 )
 
 type keyAndValue struct {
