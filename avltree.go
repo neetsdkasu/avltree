@@ -114,7 +114,7 @@ func Insert(tree Tree, replaceIfExists bool, key Key, value interface{}) (modifi
 	}
 }
 
-func Delete(tree Tree, key Key) (modified Tree, deleteValue KeyAndValue, ok bool) {
+func Delete(tree Tree, key Key) (modified Tree, deleteValue KeyAndValue) {
 	if newRoot, node, ok := removeNode(tree.Root(), key); ok {
 		deleteValue = &keyAndValue{
 			node.Key(),
@@ -125,12 +125,12 @@ func Delete(tree Tree, key Key) (modified Tree, deleteValue KeyAndValue, ok bool
 		}
 		realTree := tree.(RealTree)
 		if root, ok := newRoot.(RealNode); ok {
-			return realTree.SetRoot(root), deleteValue, true
+			return realTree.SetRoot(root), deleteValue
 		} else {
-			return realTree.SetRoot(nil), deleteValue, true
+			return realTree.SetRoot(nil), deleteValue
 		}
 	} else {
-		return tree, nil, false
+		return tree, nil
 	}
 }
 

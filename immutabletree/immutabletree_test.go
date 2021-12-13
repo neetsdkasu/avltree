@@ -424,7 +424,7 @@ func TestNodeCount(t *testing.T) {
 			tree, _ = avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
 		if len(list) > 1 {
-			tree, _, _ = avltree.Delete(tree, IntKey(list[0].Key))
+			tree, _ = avltree.Delete(tree, IntKey(list[0].Key))
 		}
 		var invalidNode Node = nil
 		avltree.Iterate(tree, false, func(node Node) (breakIteration bool) {
@@ -463,7 +463,7 @@ func TestHeight(t *testing.T) {
 			tree, _ = avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
 		}
 		if len(list) > 1 {
-			tree, _, _ = avltree.Delete(tree, IntKey(list[0].Key))
+			tree, _ = avltree.Delete(tree, IntKey(list[0].Key))
 		}
 		invalidNode := takeInvalidHeightNode(tree)
 		return invalidNode
@@ -631,9 +631,8 @@ func TestInsertAndDelete1(t *testing.T) {
 		}
 		for _, kv := range lists[0] {
 			var dv avltree.KeyAndValue
-			var ok bool
-			tree, dv, ok = avltree.Delete(tree, IntKey(kv.Key))
-			if !ok || dv.Value().(int) != kv.Value {
+			tree, dv = avltree.Delete(tree, IntKey(kv.Key))
+			if dv == nil || dv.Value().(int) != kv.Value {
 				panic("wrong")
 			}
 		}
@@ -671,7 +670,7 @@ func TestInsertAndDelete1Height(t *testing.T) {
 			}
 		}
 		for _, kv := range lists[0] {
-			tree, _, _ = avltree.Delete(tree, IntKey(kv.Key))
+			tree, _ = avltree.Delete(tree, IntKey(kv.Key))
 		}
 		for _, kv := range lists[2] {
 			tree, _ = avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
@@ -702,7 +701,7 @@ func TestInsertAndDelete1Balance(t *testing.T) {
 			}
 		}
 		for _, kv := range lists[0] {
-			tree, _, _ = avltree.Delete(tree, IntKey(kv.Key))
+			tree, _ = avltree.Delete(tree, IntKey(kv.Key))
 		}
 		for _, kv := range lists[2] {
 			tree, _ = avltree.Insert(tree, false, IntKey(kv.Key), kv.Value)
@@ -733,7 +732,7 @@ func TestInsertAndDelete2(t *testing.T) {
 			}
 		}
 		for _, kv := range lists[1] {
-			tree, _, _ = avltree.Delete(tree, IntKey(kv.Key))
+			tree, _ = avltree.Delete(tree, IntKey(kv.Key))
 		}
 		result := getAllAscKeyAndValues(tree)
 		return result
@@ -766,7 +765,7 @@ func TestInsertAndDelete2Height(t *testing.T) {
 			}
 		}
 		for _, kv := range lists[1] {
-			tree, _, _ = avltree.Delete(tree, IntKey(kv.Key))
+			tree, _ = avltree.Delete(tree, IntKey(kv.Key))
 		}
 		invalidNode := takeInvalidHeightNode(tree)
 		return invalidNode
@@ -794,7 +793,7 @@ func TestInsertAndDelete2Balance(t *testing.T) {
 			}
 		}
 		for _, kv := range lists[1] {
-			tree, _, _ = avltree.Delete(tree, IntKey(kv.Key))
+			tree, _ = avltree.Delete(tree, IntKey(kv.Key))
 		}
 		invalidNode := takeInvalidBalanceNode(tree)
 		return invalidNode

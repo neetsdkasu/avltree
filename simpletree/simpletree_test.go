@@ -535,8 +535,8 @@ func TestInsertAndDelete1(t *testing.T) {
 			}
 		}
 		for _, kv := range lists[0] {
-			_, dv, ok := avltree.Delete(tree, IntKey(kv.Key))
-			if !ok || dv.Value().(int) != kv.Value {
+			_, dv := avltree.Delete(tree, IntKey(kv.Key))
+			if dv == nil || dv.Value().(int) != kv.Value {
 				panic("wrong")
 			}
 		}

@@ -39,7 +39,7 @@ func BenchmarkDelete(b *testing.B) {
 	list = list[:b.N]
 	b.ResetTimer()
 	for _, kv := range list {
-		tree, _, _ = avltree.Delete(tree, IntKey(kv.Key))
+		tree, _ = avltree.Delete(tree, IntKey(kv.Key))
 	}
 }
 
