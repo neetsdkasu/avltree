@@ -22,7 +22,7 @@ type KeyAndValue interface {
 }
 
 type keyAndValueWrapper struct {
-	KeyAndValue avltree.KeyAndValue
+	inner avltree.KeyAndValue
 }
 
 type Node interface {
@@ -33,7 +33,7 @@ type Node interface {
 }
 
 type nodeWrapper struct {
-	Node avltree.Node
+	inner avltree.Node
 }
 
 type AlterNode interface {
@@ -44,11 +44,11 @@ type AlterNode interface {
 }
 
 type alterNodeWrapper struct {
-	AlterNode avltree.AlterNode
+	inner avltree.AlterNode
 }
 
 type AlterRequest struct {
-	alterRequest avltree.AlterRequest
+	inner avltree.AlterRequest
 }
 
 func New(tree avltree.Tree) *IntAVLTree {
@@ -363,51 +363,55 @@ func wrapDeleteIterateCallBack(callBack DeleteIterateCallBack) avltree.DeleteIte
 
 func wrapAlterNodeCallBack(callBack AlterNodeCallBack) avltree.AlterNodeCallBack {
 	return func(node avltree.AlterNode) (request avltree.AlterRequest) {
-		return callBack(&alterNodeWrapper{node}).alterRequest
+		return callBack(&alterNodeWrapper{node}).inner
 	}
 }
 
 func wrapAlterIterateCallBack(callBack AlterIterateCallBack) avltree.AlterIterateCallBack {
 	return func(node avltree.AlterNode) (request avltree.AlterRequest, breakIteration bool) {
 		req, breakIteration := callBack(&alterNodeWrapper{node})
-		return req.alterRequest, breakIteration
+		return req.inner, breakIteration
 	}
 }
 
 func (kv *keyAndValueWrapper) Key() int {
-	return int(kv.KeyAndValue.Key().(intkey.IntKey))
+	return int(kv.inner.Key().(intkey.IntKey))
 }
 
 func (kv *keyAndValueWrapper) Value() int {
-	return kv.KeyAndValue.Value().(int)
+	return kv.inner.Value().(int)
 }
 
 func (node *nodeWrapper) Key() int {
-	return int(node.Node.Key().(intkey.IntKey))
+	return int(node.inner.Key().(intkey.IntKey))
 }
 
 func (node *nodeWrapper) Value() int {
-	return node.Node.Value().(int)
+	return node.inner.Value().(int)
 }
 
 func (node *nodeWrapper) LeftChild() Node {
-	return wrapNode(node.Node.LeftChild())
+	return wrapNode(node.inner.LeftChild())
 }
 
 func (node *nodeWrapper) RightChild() Node {
-	return wrapNode(node.Node.RightChild())
+	return wrapNode(node.inner.RightChild())
 }
 
 func (node *nodeWrapper) SetValue(newValue int) {
-	node.Node.SetValue(newValue)
+	node.inner.SetValue(newValue)
+}
+
+func (node *nodeWrapper) Node() avltree.Node {
+	return node.inner
 }
 
 func (node *alterNodeWrapper) Key() int {
-	return int(node.AlterNode.Key().(intkey.IntKey))
+	return int(node.inner.Key().(intkey.IntKey))
 }
 
 func (node *alterNodeWrapper) Value() int {
-	return node.AlterNode.Value().(int)
+	return node.inner.Value().(int)
 }
 
 func (*alterNodeWrapper) Keep() (request AlterRequest) {
@@ -415,17 +419,17 @@ func (*alterNodeWrapper) Keep() (request AlterRequest) {
 }
 
 func (*alterNodeWrapper) Replace(newValue int) (request AlterRequest) {
-	request.alterRequest.Replace(newValue)
+	request.inner.Replace(newValue)
 	return
 }
 
 func (*alterNodeWrapper) Delete() (request AlterRequest) {
-	request.alterRequest.Delete()
+	request.inner.Delete()
 	return
 }
 
 func (node *alterNodeWrapper) Node() Node {
-	if nodeGetter, ok := node.AlterNode.(interface{ Node() avltree.Node }); ok {
+	if nodeGetter, ok := node.inner.(interface{ Node() avltree.Node }); ok {
 		return wrapNode(nodeGetter.Node())
 	} else {
 		return nil
@@ -433,16 +437,16 @@ func (node *alterNodeWrapper) Node() Node {
 }
 
 func (request *AlterRequest) Keep() AlterRequest {
-	request.alterRequest.Keep()
+	request.inner.Keep()
 	return *request
 }
 
 func (request *AlterRequest) Replace(newValue int) AlterRequest {
-	request.alterRequest.Replace(newValue)
+	request.inner.Replace(newValue)
 	return *request
 }
 
 func (request *AlterRequest) Delete() AlterRequest {
-	request.alterRequest.Delete()
+	request.inner.Delete()
 	return *request
 }
