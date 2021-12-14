@@ -1,6 +1,9 @@
 package intwrapper
 
-import "github.com/neetsdkasu/avltree"
+import (
+	"github.com/neetsdkasu/avltree"
+	"github.com/neetsdkasu/avltree/intkey"
+)
 
 type IterateCallBack = func(node Node) (breakIteration bool)
 type UpdateValueCallBack = func(key, oldValue int) (newValue int, keepOldValue bool)
@@ -53,35 +56,35 @@ func New(tree avltree.Tree) *IntAVLTree {
 }
 
 func (tree *IntAVLTree) Insert(key, value int) (ok bool) {
-	tree.Tree, ok = avltree.Insert(tree.Tree, false, avltree.IntKey(key), value)
+	tree.Tree, ok = avltree.Insert(tree.Tree, false, intkey.IntKey(key), value)
 	return
 }
 
 func (tree *IntAVLTree) InsertOrReplace(key, value int) (ok bool) {
-	tree.Tree, ok = avltree.Insert(tree.Tree, true, avltree.IntKey(key), value)
+	tree.Tree, ok = avltree.Insert(tree.Tree, true, intkey.IntKey(key), value)
 	return
 }
 
 func (tree *IntAVLTree) Delete(key int) (deletedValue KeyAndValue) {
 	var tempDeletedValue avltree.KeyAndValue
-	tree.Tree, tempDeletedValue = avltree.Delete(tree.Tree, avltree.IntKey(key))
+	tree.Tree, tempDeletedValue = avltree.Delete(tree.Tree, intkey.IntKey(key))
 	deletedValue = wrapKeyAndValue(tempDeletedValue)
 	return
 }
 
 func (tree *IntAVLTree) Update(key int, callBack UpdateValueCallBack) (ok bool) {
-	tree.Tree, ok = avltree.Update(tree.Tree, avltree.IntKey(key), wrapUpdateValueCallBack(callBack))
+	tree.Tree, ok = avltree.Update(tree.Tree, intkey.IntKey(key), wrapUpdateValueCallBack(callBack))
 	return
 }
 
 func (tree *IntAVLTree) Replace(key int, value int) (ok bool) {
-	tree.Tree, ok = avltree.Replace(tree.Tree, avltree.IntKey(key), value)
+	tree.Tree, ok = avltree.Replace(tree.Tree, intkey.IntKey(key), value)
 	return
 }
 
 func (tree *IntAVLTree) Alter(key int, callBack AlterNodeCallBack) (deletedValue KeyAndValue, ok bool) {
 	var tempDeletedValue avltree.KeyAndValue
-	tree.Tree, tempDeletedValue, ok = avltree.Alter(tree.Tree, avltree.IntKey(key), wrapAlterNodeCallBack(callBack))
+	tree.Tree, tempDeletedValue, ok = avltree.Alter(tree.Tree, intkey.IntKey(key), wrapAlterNodeCallBack(callBack))
 	deletedValue = wrapKeyAndValue(tempDeletedValue)
 	return
 }
@@ -95,7 +98,7 @@ func (tree *IntAVLTree) Release() {
 }
 
 func (tree *IntAVLTree) Find(key int) (node Node) {
-	return wrapNode(avltree.Find(tree.Tree, avltree.IntKey(key)))
+	return wrapNode(avltree.Find(tree.Tree, intkey.IntKey(key)))
 }
 
 func (tree *IntAVLTree) Iterate(callBack IterateCallBack) {
@@ -107,19 +110,19 @@ func (tree *IntAVLTree) IterateRev(callBack IterateCallBack) {
 }
 
 func (tree *IntAVLTree) Range(lower, upper int) (nodes []Node) {
-	return wrapNodes(avltree.Range(tree.Tree, false, avltree.IntKey(lower), avltree.IntKey(upper)))
+	return wrapNodes(avltree.Range(tree.Tree, false, intkey.IntKey(lower), intkey.IntKey(upper)))
 }
 
 func (tree *IntAVLTree) RangeRev(lower, upper int) (nodes []Node) {
-	return wrapNodes(avltree.Range(tree.Tree, true, avltree.IntKey(lower), avltree.IntKey(upper)))
+	return wrapNodes(avltree.Range(tree.Tree, true, intkey.IntKey(lower), intkey.IntKey(upper)))
 }
 
 func (tree *IntAVLTree) RangeIterate(lower, upper int, callBack IterateCallBack) {
-	avltree.RangeIterate(tree.Tree, false, avltree.IntKey(lower), avltree.IntKey(upper), wrapIterateCallBack(callBack))
+	avltree.RangeIterate(tree.Tree, false, intkey.IntKey(lower), intkey.IntKey(upper), wrapIterateCallBack(callBack))
 }
 
 func (tree *IntAVLTree) RangeIterateRev(lower, upper int, callBack IterateCallBack) {
-	avltree.RangeIterate(tree.Tree, true, avltree.IntKey(lower), avltree.IntKey(upper), wrapIterateCallBack(callBack))
+	avltree.RangeIterate(tree.Tree, true, intkey.IntKey(lower), intkey.IntKey(upper), wrapIterateCallBack(callBack))
 }
 
 func (tree *IntAVLTree) Count() int {
@@ -127,7 +130,7 @@ func (tree *IntAVLTree) Count() int {
 }
 
 func (tree *IntAVLTree) CountRange(lower, upper int) int {
-	return avltree.CountRange(tree.Tree, avltree.IntKey(lower), avltree.IntKey(upper))
+	return avltree.CountRange(tree.Tree, intkey.IntKey(lower), intkey.IntKey(upper))
 }
 
 func (tree *IntAVLTree) Min() (node Node) {
@@ -140,30 +143,30 @@ func (tree *IntAVLTree) Max() (node Node) {
 
 func (tree *IntAVLTree) DeleteAll(key int) (deletedValues []KeyAndValue) {
 	var tempDeletedValues []avltree.KeyAndValue
-	tree.Tree, tempDeletedValues = avltree.DeleteAll(tree.Tree, avltree.IntKey(key))
+	tree.Tree, tempDeletedValues = avltree.DeleteAll(tree.Tree, intkey.IntKey(key))
 	deletedValues = wrapKeyAndValues(tempDeletedValues)
 	return
 }
 
 func (tree *IntAVLTree) UpdateAll(key int, callBack UpdateValueCallBack) (ok bool) {
-	tree.Tree, ok = avltree.UpdateAll(tree.Tree, avltree.IntKey(key), wrapUpdateValueCallBack(callBack))
+	tree.Tree, ok = avltree.UpdateAll(tree.Tree, intkey.IntKey(key), wrapUpdateValueCallBack(callBack))
 	return
 }
 
 func (tree *IntAVLTree) ReplaceAll(key int, value int) (ok bool) {
-	tree.Tree, ok = avltree.ReplaceAll(tree.Tree, avltree.IntKey(key), value)
+	tree.Tree, ok = avltree.ReplaceAll(tree.Tree, intkey.IntKey(key), value)
 	return
 }
 
 func (tree *IntAVLTree) AlterAll(key int, callBack AlterNodeCallBack) (deletedValues []KeyAndValue, ok bool) {
 	var tempDeletedValues []avltree.KeyAndValue
-	tree.Tree, tempDeletedValues, ok = avltree.AlterAll(tree.Tree, avltree.IntKey(key), wrapAlterNodeCallBack(callBack))
+	tree.Tree, tempDeletedValues, ok = avltree.AlterAll(tree.Tree, intkey.IntKey(key), wrapAlterNodeCallBack(callBack))
 	deletedValues = wrapKeyAndValues(tempDeletedValues)
 	return
 }
 
 func (tree *IntAVLTree) FindAll(key int) (nodes []Node) {
-	return wrapNodes(avltree.FindAll(tree.Tree, avltree.IntKey(key)))
+	return wrapNodes(avltree.FindAll(tree.Tree, intkey.IntKey(key)))
 }
 
 func (tree *IntAVLTree) MinAll() (nodea []Node) {
@@ -190,28 +193,28 @@ func (tree *IntAVLTree) DeleteIterateRev(callBack DeleteIterateCallBack) (delete
 
 func (tree *IntAVLTree) DeleteRange(lower, upper int) (deletedValues []KeyAndValue) {
 	var tempDeletedValues []avltree.KeyAndValue
-	tree.Tree, tempDeletedValues = avltree.DeleteRange(tree.Tree, false, avltree.IntKey(lower), avltree.IntKey(upper))
+	tree.Tree, tempDeletedValues = avltree.DeleteRange(tree.Tree, false, intkey.IntKey(lower), intkey.IntKey(upper))
 	deletedValues = wrapKeyAndValues(tempDeletedValues)
 	return
 }
 
 func (tree *IntAVLTree) DeleteRangeRev(lower, upper int) (deletedValues []KeyAndValue) {
 	var tempDeletedValues []avltree.KeyAndValue
-	tree.Tree, tempDeletedValues = avltree.DeleteRange(tree.Tree, true, avltree.IntKey(lower), avltree.IntKey(upper))
+	tree.Tree, tempDeletedValues = avltree.DeleteRange(tree.Tree, true, intkey.IntKey(lower), intkey.IntKey(upper))
 	deletedValues = wrapKeyAndValues(tempDeletedValues)
 	return
 }
 
 func (tree *IntAVLTree) DeleteRangeIterate(lower, upper int, callBack DeleteIterateCallBack) (deletedValues []KeyAndValue) {
 	var tempDeletedValues []avltree.KeyAndValue
-	tree.Tree, tempDeletedValues = avltree.DeleteRangeIterate(tree.Tree, false, avltree.IntKey(lower), avltree.IntKey(upper), wrapDeleteIterateCallBack(callBack))
+	tree.Tree, tempDeletedValues = avltree.DeleteRangeIterate(tree.Tree, false, intkey.IntKey(lower), intkey.IntKey(upper), wrapDeleteIterateCallBack(callBack))
 	deletedValues = wrapKeyAndValues(tempDeletedValues)
 	return
 }
 
 func (tree *IntAVLTree) DeleteRangeIterateRev(lower, upper int, callBack DeleteIterateCallBack) (deletedValues []KeyAndValue) {
 	var tempDeletedValues []avltree.KeyAndValue
-	tree.Tree, tempDeletedValues = avltree.DeleteRangeIterate(tree.Tree, true, avltree.IntKey(lower), avltree.IntKey(upper), wrapDeleteIterateCallBack(callBack))
+	tree.Tree, tempDeletedValues = avltree.DeleteRangeIterate(tree.Tree, true, intkey.IntKey(lower), intkey.IntKey(upper), wrapDeleteIterateCallBack(callBack))
 	deletedValues = wrapKeyAndValues(tempDeletedValues)
 	return
 }
@@ -227,27 +230,27 @@ func (tree *IntAVLTree) UpdateIterateRev(callBack UpdateIterateCallBack) (ok boo
 }
 
 func (tree *IntAVLTree) UpdateRange(lower, upper int, callBack UpdateValueCallBack) (ok bool) {
-	tree.Tree, ok = avltree.UpdateRange(tree.Tree, false, avltree.IntKey(lower), avltree.IntKey(upper), wrapUpdateValueCallBack(callBack))
+	tree.Tree, ok = avltree.UpdateRange(tree.Tree, false, intkey.IntKey(lower), intkey.IntKey(upper), wrapUpdateValueCallBack(callBack))
 	return
 }
 
 func (tree *IntAVLTree) UpdateRangeRev(lower, upper int, callBack UpdateValueCallBack) (ok bool) {
-	tree.Tree, ok = avltree.UpdateRange(tree.Tree, true, avltree.IntKey(lower), avltree.IntKey(upper), wrapUpdateValueCallBack(callBack))
+	tree.Tree, ok = avltree.UpdateRange(tree.Tree, true, intkey.IntKey(lower), intkey.IntKey(upper), wrapUpdateValueCallBack(callBack))
 	return
 }
 
 func (tree *IntAVLTree) UpdateRangeIterate(lower, upper int, callBack UpdateIterateCallBack) (ok bool) {
-	tree.Tree, ok = avltree.UpdateRangeIterate(tree.Tree, false, avltree.IntKey(lower), avltree.IntKey(upper), wrapUpdateIterateCallBack(callBack))
+	tree.Tree, ok = avltree.UpdateRangeIterate(tree.Tree, false, intkey.IntKey(lower), intkey.IntKey(upper), wrapUpdateIterateCallBack(callBack))
 	return
 }
 
 func (tree *IntAVLTree) UpdateRangeIterateRev(lower, upper int, callBack UpdateIterateCallBack) (ok bool) {
-	tree.Tree, ok = avltree.UpdateRangeIterate(tree.Tree, true, avltree.IntKey(lower), avltree.IntKey(upper), wrapUpdateIterateCallBack(callBack))
+	tree.Tree, ok = avltree.UpdateRangeIterate(tree.Tree, true, intkey.IntKey(lower), intkey.IntKey(upper), wrapUpdateIterateCallBack(callBack))
 	return
 }
 
 func (tree *IntAVLTree) ReplaceRange(lower, upper int, value int) (ok bool) {
-	tree.Tree, ok = avltree.ReplaceRange(tree.Tree, avltree.IntKey(lower), avltree.IntKey(upper), value)
+	tree.Tree, ok = avltree.ReplaceRange(tree.Tree, intkey.IntKey(lower), intkey.IntKey(upper), value)
 	return
 }
 
@@ -267,28 +270,28 @@ func (tree *IntAVLTree) AlterIterateRev(callBack AlterIterateCallBack) (deletedV
 
 func (tree *IntAVLTree) AlterRange(lower, upper int, callBack AlterNodeCallBack) (deletedValues []KeyAndValue, ok bool) {
 	var tempDeletedValues []avltree.KeyAndValue
-	tree.Tree, tempDeletedValues, ok = avltree.AlterRange(tree.Tree, false, avltree.IntKey(lower), avltree.IntKey(upper), wrapAlterNodeCallBack(callBack))
+	tree.Tree, tempDeletedValues, ok = avltree.AlterRange(tree.Tree, false, intkey.IntKey(lower), intkey.IntKey(upper), wrapAlterNodeCallBack(callBack))
 	deletedValues = wrapKeyAndValues(tempDeletedValues)
 	return
 }
 
 func (tree *IntAVLTree) AlterRangeRev(lower, upper int, callBack AlterNodeCallBack) (deletedValues []KeyAndValue, ok bool) {
 	var tempDeletedValues []avltree.KeyAndValue
-	tree.Tree, tempDeletedValues, ok = avltree.AlterRange(tree.Tree, true, avltree.IntKey(lower), avltree.IntKey(upper), wrapAlterNodeCallBack(callBack))
+	tree.Tree, tempDeletedValues, ok = avltree.AlterRange(tree.Tree, true, intkey.IntKey(lower), intkey.IntKey(upper), wrapAlterNodeCallBack(callBack))
 	deletedValues = wrapKeyAndValues(tempDeletedValues)
 	return
 }
 
 func (tree *IntAVLTree) AlterRangeIterate(lower, upper int, callBack AlterIterateCallBack) (deletedValues []KeyAndValue, ok bool) {
 	var tempDeletedValues []avltree.KeyAndValue
-	tree.Tree, tempDeletedValues, ok = avltree.AlterRangeIterate(tree.Tree, false, avltree.IntKey(lower), avltree.IntKey(upper), wrapAlterIterateCallBack(callBack))
+	tree.Tree, tempDeletedValues, ok = avltree.AlterRangeIterate(tree.Tree, false, intkey.IntKey(lower), intkey.IntKey(upper), wrapAlterIterateCallBack(callBack))
 	deletedValues = wrapKeyAndValues(tempDeletedValues)
 	return
 }
 
 func (tree *IntAVLTree) AlterRangeIterateRev(lower, upper int, callBack AlterIterateCallBack) (deletedValues []KeyAndValue, ok bool) {
 	var tempDeletedValues []avltree.KeyAndValue
-	tree.Tree, tempDeletedValues, ok = avltree.AlterRangeIterate(tree.Tree, true, avltree.IntKey(lower), avltree.IntKey(upper), wrapAlterIterateCallBack(callBack))
+	tree.Tree, tempDeletedValues, ok = avltree.AlterRangeIterate(tree.Tree, true, intkey.IntKey(lower), intkey.IntKey(upper), wrapAlterIterateCallBack(callBack))
 	deletedValues = wrapKeyAndValues(tempDeletedValues)
 	return
 }
@@ -341,20 +344,20 @@ func wrapIterateCallBack(callBack IterateCallBack) avltree.IterateCallBack {
 
 func wrapUpdateValueCallBack(callBack UpdateValueCallBack) avltree.UpdateValueCallBack {
 	return func(key avltree.Key, value interface{}) (newValue interface{}, keepOldValue bool) {
-		newValue, keepOldValue = callBack(int(key.(avltree.IntKey)), value.(int))
+		newValue, keepOldValue = callBack(int(key.(intkey.IntKey)), value.(int))
 		return
 	}
 }
 func wrapUpdateIterateCallBack(callBack UpdateIterateCallBack) avltree.UpdateIterateCallBack {
 	return func(key avltree.Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool) {
-		newValue, keepOldValue, breakIteration = callBack(int(key.(avltree.IntKey)), oldValue.(int))
+		newValue, keepOldValue, breakIteration = callBack(int(key.(intkey.IntKey)), oldValue.(int))
 		return
 	}
 }
 
 func wrapDeleteIterateCallBack(callBack DeleteIterateCallBack) avltree.DeleteIterateCallBack {
 	return func(key avltree.Key, value interface{}) (deleteNode, breakIteration bool) {
-		return callBack(int(key.(avltree.IntKey)), value.(int))
+		return callBack(int(key.(intkey.IntKey)), value.(int))
 	}
 }
 
@@ -372,7 +375,7 @@ func wrapAlterIterateCallBack(callBack AlterIterateCallBack) avltree.AlterIterat
 }
 
 func (kv *keyAndValueWrapper) Key() int {
-	return int(kv.KeyAndValue.Key().(avltree.IntKey))
+	return int(kv.KeyAndValue.Key().(intkey.IntKey))
 }
 
 func (kv *keyAndValueWrapper) Value() int {
@@ -380,7 +383,7 @@ func (kv *keyAndValueWrapper) Value() int {
 }
 
 func (node *nodeWrapper) Key() int {
-	return int(node.Node.Key().(avltree.IntKey))
+	return int(node.Node.Key().(intkey.IntKey))
 }
 
 func (node *nodeWrapper) Value() int {
@@ -400,7 +403,7 @@ func (node *nodeWrapper) SetValue(newValue int) {
 }
 
 func (node *alterNodeWrapper) Key() int {
-	return int(node.AlterNode.Key().(avltree.IntKey))
+	return int(node.AlterNode.Key().(intkey.IntKey))
 }
 
 func (node *alterNodeWrapper) Value() int {

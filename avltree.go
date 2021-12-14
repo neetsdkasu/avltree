@@ -1,7 +1,5 @@
 package avltree
 
-import "strings"
-
 type IterateCallBack = func(node Node) (breakIteration bool)
 type UpdateValueCallBack = func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue bool)
 type UpdateIterateCallBack = func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool)
@@ -65,38 +63,6 @@ const (
 type Key interface {
 	CompareTo(other Key) KeyOrdering
 	Copy() Key
-}
-
-type IntKey int
-
-func (key IntKey) CompareTo(other Key) KeyOrdering {
-	v1 := int(key)
-	v2 := int(other.(IntKey))
-	switch {
-	case v1 < v2:
-		return LessThanOtherKey
-	case v1 > v2:
-		return GreaterThanOtherKey
-	default:
-		return EqualToOtherKey
-	}
-	// return v1 - v2 は 算術オーバーフローがこわい
-}
-
-func (key IntKey) Copy() Key {
-	return key
-}
-
-type StringKey string
-
-func (key StringKey) CompareTo(other Key) KeyOrdering {
-	s1 := string(key)
-	s2 := string(other.(StringKey))
-	return KeyOrdering(strings.Compare(s1, s2))
-}
-
-func (key StringKey) Copy() Key {
-	return key
 }
 
 func Insert(tree Tree, replaceIfExists bool, key Key, value interface{}) (modified Tree, ok bool) {

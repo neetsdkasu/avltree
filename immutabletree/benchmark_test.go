@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/neetsdkasu/avltree"
+	. "github.com/neetsdkasu/avltree/intkey"
 )
 
 func genKeyAndValues(n int) []*keyAndValue {

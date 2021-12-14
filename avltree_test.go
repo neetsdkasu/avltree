@@ -30,48 +30,6 @@ func (a *assertion) IsFalse(expectFalse bool, args ...interface{}) {
 	}
 }
 
-func TestIntKey(t *testing.T) {
-	f := func(k1, k2 int) bool {
-		var key1 Key = IntKey(k1)
-		var key2 Key = IntKey(k2)
-		switch key1.CompareTo(key2) {
-		case LessThanOtherKey:
-			return k1 < k2
-		case EqualToOtherKey:
-			return k1 == k2
-		case GreaterThanOtherKey:
-			return k1 > k2
-		default:
-			return false
-		}
-	}
-
-	if err := quick.Check(f, cfg1000); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestStringKey(t *testing.T) {
-	f := func(k1, k2 string) bool {
-		var key1 Key = StringKey(k1)
-		var key2 Key = StringKey(k2)
-		switch key1.CompareTo(key2) {
-		case LessThanOtherKey:
-			return k1 < k2
-		case EqualToOtherKey:
-			return k1 == k2
-		case GreaterThanOtherKey:
-			return k1 > k2
-		default:
-			return false
-		}
-	}
-
-	if err := quick.Check(f, cfg1000); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestKeyOrdering_LessThanOtherKey(t *testing.T) {
 	a := (*assertion)(t)
 	a.IsTrue(

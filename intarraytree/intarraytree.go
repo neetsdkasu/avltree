@@ -1,6 +1,9 @@
 package intarraytree
 
-import "github.com/neetsdkasu/avltree"
+import (
+	"github.com/neetsdkasu/avltree"
+	"github.com/neetsdkasu/avltree/intkey"
+)
 
 const (
 	PositionRootPosition int = iota
@@ -137,7 +140,7 @@ func (tree *IntArrayTree) NewNode(leftChild, rightChild avltree.Node, height int
 	node.set(OffsetHeight, height)
 	node.set(OffsetParentPosition, NodeIsNothing)
 	node.set(OffsetNodeCount, 1)
-	node.set(OffsetKey, int(key.(avltree.IntKey)))
+	node.set(OffsetKey, int(key.(intkey.IntKey)))
 	node.set(OffsetValue, value.(int))
 	node.resetNodeCount()
 	return node
@@ -168,7 +171,7 @@ func (tree *IntArrayTree) CleanUpTree() {
 }
 
 func (node *IntArrayTreeNode) Key() avltree.Key {
-	return avltree.IntKey(node.get(OffsetKey))
+	return intkey.IntKey(node.get(OffsetKey))
 }
 
 func (node *IntArrayTreeNode) Value() interface{} {

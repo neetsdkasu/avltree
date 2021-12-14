@@ -5,12 +5,13 @@ import (
 	"testing/quick"
 
 	"github.com/neetsdkasu/avltree"
+	"github.com/neetsdkasu/avltree/intkey"
 )
 
 var cfg1000 = &quick.Config{MaxCount: 1000}
 
 type (
-	IntKey = avltree.IntKey
+	IntKey = intkey.IntKey
 	Key    = avltree.Key
 	Node   = avltree.Node
 	Tree   = avltree.Tree
