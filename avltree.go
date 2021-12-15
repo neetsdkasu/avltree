@@ -1,70 +1,294 @@
+// 概要
+// AVL木の構築と操作をするパッケージ？
+//
+//
+// 注意点
+// 本パッケージが正しくAVL木として機能しているかは未確認
+// 性能(実行速度やメモリの扱い)が壊滅的なので実用性は皆無
+// キーや値の型の検査などは一切していないので利用者側で統一させる必要がある
+// キーの不変性も利用者側で確保する必要がある
+// サブツリーやノードを操作するための処理は無い
+//
+//
+// 利用方法
+// 利用者側でインターフェースのRealTree,RealNode,Keyの実装を用意しそれを本パッケージの関数で操作などをする
+//
+// RealTree,RealNodeの実装例を以下のサブパッケージに置いてある
+//  github.com/neetsdkasu/avltree/simpletree        最低限の実装のみ
+//  github.com/neetsdkasu/avltree/standardtree      ノード数の保持や親ノード参照などの機能がある
+//  github.com/neetsdkasu/avltree/immutabletree     木の構造の部分だけは不変性になるように実装されている(キーと値の不変性は取り扱わない)
+//  github.com/neetsdkasu/avltree/intarraytree      int型の配列上に木が構築されるように実装(キーはintkeyの実装のみ、値もint型のみ)
+//
+// Keyの実装例を以下のサブパッケージに置いてある
+//  github.com/neetsdkasu/avltree/intkey            int型をKeyとして使えるよう実装
+//  github.com/neetsdkasu/avltree/stringkey         string型をKeyとして使えるよう実装
+//
+// 木の実装を内包し本パッケージの関数をメソッド経由で呼び出す、所謂"ラッパー"の実装例を以下のサブパッケージにおいてある
+//  github.com/neetsdkasu/avltree/simplewrapper     簡易に実装したラッパー
+//  github.com/neetsdkasu/avltree/intwrapper        キーも値もint型に強制するラッパー
+//
+//
+// コード例
+//
+//		import (
+//			"fmt"
+//			"github.com/neetsdkasu/avltree"
+//			. "github.com/neetsdkasu/avltree/intkey"
+//			"github.com/neetsdkasu/avltree/simpletree"
+//		)
+//		func Example() {
+//			tree := simpletree.New(false)
+//			avltree.Insert(tree, false, IntKey(12), 345)
+//			avltree.Insert(tree, false, IntKey(67), 890)
+//			avltree.Insert(tree, false, IntKey(333), 666)
+//			avltree.Insert(tree, false, IntKey(-5), 12345)
+//			avltree.Delete(tree, IntKey(67))
+//			avltree.Update(tree, IntKey(333), func(key avltree.Key, oldValue interface{}) (newValue interface{}, keepOldValue bool) {
+//				newValue = oldValue.(int) * 3
+//				return
+//			})
+//			if node := avltree.Find(tree, IntKey(12)); node != nil {
+//				fmt.Println("Find!", node.Key(), node.Value())
+//			}
+//			avltree.Iterate(tree, false, func(node avltree.Node) (breakIteration bool) {
+//				fmt.Println("Iterate!", node.Key(), node.Value())
+//				return
+//			})
+//			// Output:
+//			// Find! 12 345
+//			// Iterate! -5 12345
+//			// Iterate! 12 345
+//			// Iterate! 333 1998
+//		}
+//
+//
+// ラッパーを使ったコード例
+//
+//		import (
+//			"fmt"
+//			"github.com/neetsdkasu/avltree"
+//			. "github.com/neetsdkasu/avltree/intkey"
+//			"github.com/neetsdkasu/avltree/simpletree"
+//			"github.com/neetsdkasu/avltree/simplewrapper"
+//		)
+//		func Example_wrapper() {
+//			tree := simpletree.New(false)
+//			w := simplewrapper.New(tree)
+//			w.Insert(IntKey(12), 345)
+//			w.Insert(IntKey(67), 890)
+//			w.Insert(IntKey(333), 666)
+//			w.Insert(IntKey(-5), 12345)
+//			w.Delete(IntKey(67))
+//			w.Update(IntKey(333), func(key avltree.Key, oldValue interface{}) (newValue interface{}, keepOldValue bool) {
+//				newValue = oldValue.(int) * 3
+//				return
+//			})
+//			if node := w.Find(IntKey(12)); node != nil {
+//				fmt.Println("Find!", node.Key(), node.Value())
+//			}
+//			w.Iterate(func(node avltree.Node) (breakIteration bool) {
+//				fmt.Println("Iterate!", node.Key(), node.Value())
+//				return
+//			})
+//			// Output:
+//			// Find! 12 345
+//			// Iterate! -5 12345
+//			// Iterate! 12 345
+//			// Iterate! 333 1998
+//		}
+//
 package avltree
 
+// 木のノードを順に参照するIterate,RangeIterateの引数で渡す
+// breakIterationをtrueにしたときにイテレーションを中断する
 type IterateCallBack = func(node Node) (breakIteration bool)
+
+// 指定のキーの値の更新をするUpdate,UpdateAll,UpdateRangeの引数で渡す
+// newValueに値を代入することでキーに対する新しい値を設定する
+// 値を変更しない場合はkeepOldValueをtrueに設定する
 type UpdateValueCallBack = func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue bool)
+
+// 木のノードを順に巡りノードの値を更新するUpdateIterate,UpdateRangeIterateの引数で渡す
+// newValueに値を代入することでキーに対する新しい値を設定する
+// 値を変更しない場合はkeepOldValueをtrueに設定する
+// breakIterationをtrueにしたときにイテレーションを中断する
 type UpdateIterateCallBack = func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool)
+
+// 木のノードを順に巡りノードの削除判定をするDeleteIterate,DeleteRangeIterateの引数で渡す
+// deleteNodeをtrueに設定すると当該ノードを削除する
+// breakIterationをtrueにしたときにイテレーションを中断する
 type DeleteIterateCallBack = func(key Key, value interface{}) (deleteNode, breakIteration bool)
+
+// 指定のキーの値の更新またはノードを削除をするAlter,AlterAll,AlterRangeの引数で渡す
+// return node.Keep()またはrequest.Keep()でノードに変更を加えない指示となる
+// return node.Replace(newValue)またはrequest.Replace(newValue)で値をnewValueに更新する指示となる
+// return node.Delete()またはrequest.Delete()でノードを削除をする指示となる
 type AlterNodeCallBack = func(node AlterNode) (request AlterRequest)
+
+// 木のノードを順に巡りノードの値の更新またはノードを削除をするAlterIterate,AlterRangeIterateの引数で渡す
+// return node.Keep()またはrequest.Keep()でノードに変更を加えない指示となる
+// return node.Replace(newValue)またはrequest.Replace(newValue)で値をnewValueに更新する指示となる
+// return node.Delete()またはrequest.Delete()でノードを削除をする指示となる
+// breakIterationをtrueにしたときにイテレーションを中断する
 type AlterIterateCallBack = func(node AlterNode) (request AlterRequest, breakIteration bool)
 
+// 木またはサブツリーのルートノードがノード数を保持する実装でその値を公開するためのメソッド
+// このインターフェースが実装されている場合にCount,CountRangeの内部でNodeCountメソッドが呼び出される
 type NodeCounter interface{ NodeCount() int }
-type NodeReleaser interface{ ReleaseNode(node RealNode) }
-type TreeReleaser interface {
-	Tree
-	ReleaseTree()
-}
-type TreeCleaner interface {
-	Tree
-	CleanUpTree()
-}
+
+// 子ノードが親のノードを参照できる実装でその参照を公開するためのメソッド
+// 本パッケージ内で使用される予定は今のところ無い…
 type ParentGetter interface {
 	Node
 	Parent() Node
 }
 
+// 木がこのインターフェースを実装している場合にDeleteなどの内部でRelaseNodeメソッドが呼び出される
+// ノードが木から切り離された際にそのノードのインスタンスに対して何らかの処理をしたい場合に木側で実装する必要がある
+// 例えばデータの切り離しやインスタンスの再利用やメモリの再利用・解放など(ノード本体のインスタンスやメモリのみの処理が実行されることが期待される)
+// インターフェースRealNodeのNewNodeメソッドでのノード生成と対になる処理になることが期待される
+// サブパッケージのintarraytreeではReleaseNodeでメモリの再利用のための処理を行っている
+type NodeReleaser interface {
+	RealTree
+	ReleaseNode(node RealNode)
+}
+
+// 木のメモリの解放処理を行うためのメソッド(？)
+// ReleaseTreeメソッドが呼び出された場合に木の再利用が不可能な状態であることが期待される(panicを起こすなど)
+// このインターフェースが実装されている場合にReleaseの内部でReleaseTreeメソッドを呼び出す
+type TreeReleaser interface {
+	Tree
+	ReleaseTree()
+}
+
+// このインターフェースが実装されている場合にClearの内部で木のノードを全て削除したあとでCleanUpTreeメソッドを呼び出す
+// Delete系やAlter系で木のノードが全部削除されてもこのメソッドは呼び出されずClearのみで呼び出される
+// 利用シーンは全く思い至らないのに何故か用意してしまった謎インターフェース
+// サブパッケージのintarraytreeではCleanUpTreeでメモリ再利用のためのノードのチェーンを破棄するための処理を行っている
+type TreeCleaner interface {
+	Tree
+	CleanUpTree()
+}
+
+// 木の公開用の基本的なインターフェース
+// デフォルトでアクセスできる範囲を制限するためだけの用途
 type Tree interface {
+	// 木のルートノードを返却されることが期待される
+	// 返却されるNodeはRealNodeを実装している必要がある
+	// 木のルートノードが無い場合はreturn nilでnilを返却する必要がある
 	Root() Node
 }
 
+// 本パッケージで操作するために木が実装するべきメソッド
 type RealTree interface {
 	Tree
+
+	// Insertなどで木に新しいノードを作る場合に呼び出される
+	// 引数で渡された情報を持つノードが返却されることが期待される
+	// leftChildで対応するノードが無い場合は引数にnilが渡される
+	// rightChildで対応するノードが無い場合は引数にnilが渡される
 	NewNode(leftChild, rightChild Node, height int, key Key, value interface{}) RealNode
+
+	// 木のルートノードを設定する場合に呼び出される
+	// 木にノードが全く無くなった場合はnewRootにnilが渡される
+	// 可変(mutable)の木の場合にはレシーバである木自身のインスタンスが返却されることが期待される
+	// 不変(immutable)の木の場合にはレシーバと同じ設定を持ちnewRootのルートノードを持つ新しいインスタンスの木が返却されることが期待される
 	SetRoot(newRoot RealNode) RealTree
+
+	// 木が同一のキーのノードを複数保持できるかどうかを返す
+	// trueの場合、木が同一キーのノードを複数保持することを許可することを表す
+	// falseの場合、木が同一キーのノードを複数保持することを許可しないことを表す
+	// 同一キーを許可する場合、キー指定操作(Findなど)において同一キーのノードのどのノードが取得されるかは不定である
 	AllowDuplicateKeys() bool
 }
 
 type KeyAndValue interface {
+	// ノードに設定されたキーを返却する
 	Key() Key
+
+	// ノードに設定された値を返却する
 	Value() interface{}
 }
 
+// ノードの公開用の基本的なインターフェース
+// デフォルトでアクセスできる範囲を制限するためだけの用途
 type Node interface {
 	KeyAndValue
+
+	// このノードの左の子ノードが返却されることが期待される
+	// 返却されるNodeはRealNodeを実装している必要がある
+	// 左の子ノードが無い場合はreturn nilでnilを返却する必要がある
 	LeftChild() Node
+
+	// このノードの右の子のノードが返却されることが期待される
+	// 返却されるNodeはRealNodeを実装している必要がある
+	// 右の子ノードが無い場合はreturn nilでnilを返却する必要がある
 	RightChild() Node
+
+	// このノードに新しい値を設定する
+	// 可変(mutable)の木の場合にはレシーバであるノード自身のインスタンスが返却されることが期待される
+	// 不変(immutable)の木の場合にはレシーバと同じ設定を持ちnewValueの値を持つ新しいインスタンスのノードが返却されることが期待される
+	// 返却されるNodeはRealNodeを実装している必要がある
 	SetValue(newValue interface{}) Node
 }
 
+// 本パッケージで操作するためにノードが実装するべきメソッド
 type RealNode interface {
 	Node
+
+	// このノードの高さを返却する必要がある
+	// 高さはRealTreeのNewNodeメソッドまたはRealNodeのSetChildre,Setメソッドで設定された値
 	Height() int
+
+	// このノードの新しい高さとこのノードの左右の子を設定する
+	// 引数のnewHeightは計算後の値なのでノードはそのままの値を保持する必要がある
+	// newLeftChildで対応するノードが無い場合は引数にnilが渡される
+	// newRightChildで対応するノードが無い場合は引数にnilが渡される
+	// 可変(mutable)の木の場合にはレシーバであるノード自身のインスタンスが返却されることが期待される
+	// 不変(immutable)の木の場合にはレシーバと同じ設定を持ち渡された引数の情報を持つ新しいインスタンスのノードが返却されることが期待される
 	SetChildren(newLeftChild, newRightChild Node, newHeight int) RealNode
+
+	// このノードの新しい値とこのノードの新しい高さとこのノードの左右の子を設定する
+	// 引数のnewHeightは計算後の値なのでノードはそのままの値を保持する必要がある
+	// newLeftChildで対応するノードが無い場合は引数にnilが渡される
+	// newRightChildで対応するノードが無い場合は引数にnilが渡される
+	// 可変(mutable)の木の場合にはレシーバであるノード自身のインスタンスが返却されることが期待される
+	// 不変(immutable)の木の場合にはレシーバと同じ設定を持ち渡された引数の情報を持つ新しいインスタンスのノードが返却されることが期待される
 	Set(newLeftChild, newRightChild Node, newHeight int, newValue interface{}) RealNode
 }
 
+// キーの比較結果を表す型
 type KeyOrdering int
 
 const (
-	LessThanOtherKey    KeyOrdering = -1
-	EqualToOtherKey     KeyOrdering = 0
+	// CompareToメソッドの引数のotherよりレシーバのほうが小さい
+	LessThanOtherKey KeyOrdering = -1
+
+	// CompareToメソッドの引数のotherとレシーバは同じキー
+	EqualToOtherKey KeyOrdering = 0
+
+	// CompareToメソッドの引数のotherよりレシーバのほうが大きい
 	GreaterThanOtherKey KeyOrdering = 1
 )
 
+// AVL木でノードの比較に使うキーのインターフェース
 type Key interface {
+	// キーの順序(比較結果)を返却する必要がある
 	CompareTo(other Key) KeyOrdering
+
+	// キーのコピーが返却されることが期待される
+	// RealTreeのNewNodeメソッドの引数に渡すときにこのCopyメソッドが呼ばれる
 	Copy() Key
 }
 
+// 木に指定のキーと値を持つ新しいノードを追加する
+// 既に指定キーが木に存在する場合は
+// 木が同一キーのノードを許可しておらずreplaceIfExistsがfalseのときは木にノードを追加しない
+// 木が同一キーのノードを許可しておらずreplaceIfExistsがtrueのときは既に存在するノードの値をvalueに置き換える
+// 木が同一キーのノードを許可しておりreplaceIfExistsがfalseのときは木に新たにノードを追加する
+// 木が同一キーのノードを許可しておりreplaceIfExistsがtrueのときは既に存在するノードのうち最初に見つかったノード(同一キーのノードのうち高さが最も高いノード)の値をvalueに置き換える
+// 戻り値のmodifiedは木に変更があった場合はRealTreeのSetRootメソッドの戻り値となり、変更がない場合は引数のtreeがそのまま返却される
+// 戻り値のokは木へのノード追加あるいはノードの値の更新があった場合にtrue、木に変化がなかった場合はfalseを返却する
 func Insert(tree Tree, replaceIfExists bool, key Key, value interface{}) (modified Tree, ok bool) {
 	realTree := tree.(RealTree)
 	helper := insertHelper{
@@ -80,6 +304,11 @@ func Insert(tree Tree, replaceIfExists bool, key Key, value interface{}) (modifi
 	}
 }
 
+// 指定のキーを持つノードを木から削除する(木から取り除く)
+// 指定のキーが存在しない場合は何もしない
+// 木が同一キーのノードを許可している場合は指定キーを持つノードのうち最初に見つかったノード(同一キーのノードのうち高さが最も高いノード)が削除される
+// 戻り値のmodifiedは木に変更があった場合はRealTreeのSetRootメソッドの戻り値となり、変更がない場合は引数のtreeがそのまま返却される
+// 戻り値のdeletedValueは削除したノードのキーと値を持っている
 func Delete(tree Tree, key Key) (modified Tree, deleteValue KeyAndValue) {
 	if newRoot, node, ok := removeNode(tree.Root(), key); ok {
 		deleteValue = &keyAndValue{
