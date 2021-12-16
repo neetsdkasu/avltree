@@ -329,6 +329,7 @@ func Delete(tree Tree, key Key) (modified Tree, deleteValue KeyAndValue) {
 	}
 }
 
+// 指定のキーを持つノードの値を変更する
 func Update(tree Tree, key Key, callBack UpdateValueCallBack) (modified Tree, ok bool) {
 	if newRoot, ok := updateValue(tree.Root(), key, callBack); ok {
 		return tree.(RealTree).SetRoot(newRoot), true
@@ -337,29 +338,41 @@ func Update(tree Tree, key Key, callBack UpdateValueCallBack) (modified Tree, ok
 	}
 }
 
+// 指定のキーを持つノードの値を別の値に置き換える
 func Replace(tree Tree, key Key, newValue interface{}) (modified Tree, ok bool) {
 	return Update(tree, key, func(key Key, oldValue interface{}) (interface{}, bool) {
 		return newValue, false
 	})
 }
 
+// Alterのコールバックの引数で受け取るノード情報
+// コールバックの戻り値のAlterRequestを生成できるメソッドも実装している
 type AlterNode interface {
 	KeyAndValue
+    
+    // ノードに対して変更や削除の操作をしないことを指定するAlterRequestを生成する
 	Keep() AlterRequest
+
+    // ノードの値を指定した値へ置き換えることを指定するAlterRequestを生成する
 	Replace(newValue interface{}) AlterRequest
+
+    // ノードを削除することを指定するAlterRequestを生成する
 	Delete() AlterRequest
 }
 
 type alterNode struct {
-	node Node
+	inner Node
 }
 
+// Alterのコールバックの戻り値で使用する
+// ノードに対する処理の情報を保持する
 type AlterRequest struct {
 	replaceValue bool
 	newValue     interface{}
 	deleteNode   bool
 }
 
+// 指定したキーを持つノードの値を変更またはノードを削除する
 func Alter(tree Tree, key Key, callBack AlterNodeCallBack) (modified Tree, deletedValue KeyAndValue, ok bool) {
 	if newRoot, deleted, ok := alter(tree.Root(), key, callBack); ok {
 		if deleted != nil {
@@ -381,6 +394,7 @@ func Alter(tree Tree, key Key, callBack AlterNodeCallBack) (modified Tree, delet
 	}
 }
 
+// 木のインスタンスを再利用するために木が保持するノードを全て削除し空にする
 func Clear(tree Tree) (modified Tree) {
 	if releaser, ok := tree.(NodeReleaser); ok {
 		stack := []Node{tree.Root()}
@@ -401,6 +415,9 @@ func Clear(tree Tree) (modified Tree) {
 	return tree.(RealTree).SetRoot(nil)
 }
 
+// 木のインスタンスを解放(または破棄)する
+// 木がインターフェースTreeReleaserを実装している場合にのみ機能する
+// 解放の全ての処理が終わったあと引数のtreeの参照先にはnilが代入される
 func Release(tree *Tree) {
 	Clear(*tree)
 	if releaser, ok := (*tree).(TreeReleaser); ok {
@@ -409,6 +426,11 @@ func Release(tree *Tree) {
 	*tree = nil
 }
 
+// 指定のキーを持つノードを取得する
+// 指定のキーを持つノードが無い場合は戻り値nodeはnilになる
+// 戻り値nodeは木の一部のままなのでこのnodeを編集すると木にも影響する
+// 可変(mutable)の木の場合にはnodeの内容を変更する操作は木にも影響する
+// 不変(immutable)の木の場合にはnodeのインターフェスNodeやRealNodeのメソッド呼び出しでは木に影響がないことが期待される
 func Find(tree Tree, key Key) (node Node) {
 	node = tree.Root()
 	for node != nil {
@@ -1964,16 +1986,16 @@ func descDeleteRange(root Node, bounds keyBounds, callBack DeleteIterateCallBack
 	return newRoot, deleted, breakIteration
 }
 
-func (aNode *alterNode) Node() Node {
-	return aNode.node
+func (node *alterNode) Node() Node {
+	return node.inner
 }
 
-func (aNode *alterNode) Key() Key {
-	return aNode.node.Key()
+func (node *alterNode) Key() Key {
+	return node.inner.Key()
 }
 
-func (aNode *alterNode) Value() interface{} {
-	return aNode.node.Value()
+func (node *alterNode) Value() interface{} {
+	return node.inner.Value()
 }
 
 func (*alterNode) Keep() (request AlterRequest) {
