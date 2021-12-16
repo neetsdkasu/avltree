@@ -305,7 +305,7 @@ func Insert(tree Tree, replaceIfExists bool, key Key, value interface{}) (modifi
 }
 
 // 指定のキーを持つノードを木から削除する(木から取り除く)
-// 指定のキーが存在しない場合は何もしない
+// 指定のキーが存在しない場合は木に変更は加えない
 // 木が同一キーのノードを許可している場合は指定キーを持つノードのうち最初に見つかったノード(同一キーのノードのうち高さが最も高いノード)が削除される
 // 戻り値のmodifiedは木に変更があった場合はRealTreeのSetRootメソッドの戻り値となり、変更がない場合は引数のtreeがそのまま返却される
 // 戻り値のdeletedValueは削除したノードのキーと値を持っている
@@ -330,6 +330,12 @@ func Delete(tree Tree, key Key) (modified Tree, deleteValue KeyAndValue) {
 }
 
 // 指定のキーを持つノードの値を変更する
+// 指定のキーが存在しない場合は木に変更は加えない
+// 木が同一キーのノードを許可している場合は指定キーを持つノードのうち最初に見つかったノード(同一キーのノードのうち高さが最も高いノード)が変更の対象となる
+// 戻り値のmodifiedは変更があった場合はRealTreeのSetRootメソッドの戻り値となり、変更がない場合は引数のtreeがそのまま返却される
+// 戻り値のokは変更があった場合にtrueとなる
+// 変更があった場合とは、指定のキーを持つノードが存在し、かつコールバックの戻り値keepOldValueがfalseであったときのことを指す
+// 変更が無かった場合とは、指定のキーを持つノードが存在しなかった場合もしくはコールバックの戻り値keepOldValueがtrueであった場合
 func Update(tree Tree, key Key, callBack UpdateValueCallBack) (modified Tree, ok bool) {
 	if newRoot, ok := updateValue(tree.Root(), key, callBack); ok {
 		return tree.(RealTree).SetRoot(newRoot), true
@@ -339,6 +345,10 @@ func Update(tree Tree, key Key, callBack UpdateValueCallBack) (modified Tree, ok
 }
 
 // 指定のキーを持つノードの値を別の値に置き換える
+// 指定のキーが存在しない場合は木に変更は加えない
+// 木が同一キーのノードを許可している場合は指定キーを持つノードのうち最初に見つかったノード(同一キーのノードのうち高さが最も高いノード)が変更の対象となる
+// 戻り値のmodifiedは指定したキーが存在する場合はRealTreeのSetRootメソッドの戻り値となり、キーが存在しない場合は引数のtreeがそのまま返却される
+// 戻り値のokは指定のキーを持つノードが存在する場合にtrueとなる
 func Replace(tree Tree, key Key, newValue interface{}) (modified Tree, ok bool) {
 	return Update(tree, key, func(key Key, oldValue interface{}) (interface{}, bool) {
 		return newValue, false
@@ -349,17 +359,18 @@ func Replace(tree Tree, key Key, newValue interface{}) (modified Tree, ok bool) 
 // コールバックの戻り値のAlterRequestを生成できるメソッドも実装している
 type AlterNode interface {
 	KeyAndValue
-    
-    // ノードに対して変更や削除の操作をしないことを指定するAlterRequestを生成する
+
+	// ノードに対して変更や削除の操作をしないことを指定するAlterRequestを生成する
 	Keep() AlterRequest
 
-    // ノードの値を指定した値へ置き換えることを指定するAlterRequestを生成する
+	// ノードの値を指定した値へ置き換えることを指定するAlterRequestを生成する
 	Replace(newValue interface{}) AlterRequest
 
-    // ノードを削除することを指定するAlterRequestを生成する
+	// ノードを削除することを指定するAlterRequestを生成する
 	Delete() AlterRequest
 }
 
+// AlterNodeの実体
 type alterNode struct {
 	inner Node
 }
@@ -373,6 +384,11 @@ type AlterRequest struct {
 }
 
 // 指定したキーを持つノードの値を変更またはノードを削除する
+// 指定のキーが存在しない場合は木に変更は加えない
+// 木が同一キーのノードを許可している場合は指定キーを持つノードのうち最初に見つかったノード(同一キーのノードのうち高さが最も高いノード)が変更の対象となる
+// 戻り値のmodifiedは対象のノードが存在しコールバックの戻り値で変更か削除を指定された場合はRealTreeのSetRootメソッドの戻り値となり、それ以外の場合は引数のtreeがそのまま返却される
+// 戻り値のdeletedValueは削除したノードのキーと値を持っている
+// 戻り値のokは対象のノードが存在しコールバックの戻り値で変更か削除を指定された場合にtrueとなり、それ以外の場合はfalseとなる
 func Alter(tree Tree, key Key, callBack AlterNodeCallBack) (modified Tree, deletedValue KeyAndValue, ok bool) {
 	if newRoot, deleted, ok := alter(tree.Root(), key, callBack); ok {
 		if deleted != nil {
@@ -395,6 +411,7 @@ func Alter(tree Tree, key Key, callBack AlterNodeCallBack) (modified Tree, delet
 }
 
 // 木のインスタンスを再利用するために木が保持するノードを全て削除し空にする
+// 戻り値のmodifiedはRealTreeのSetRootメソッドの戻り値となる
 func Clear(tree Tree) (modified Tree) {
 	if releaser, ok := tree.(NodeReleaser); ok {
 		stack := []Node{tree.Root()}
@@ -447,6 +464,10 @@ func Find(tree Tree, key Key) (node Node) {
 	return nil
 }
 
+// 木のノードを順に巡ってコールバックを呼び出す
+// descOrderがfalseのときはキーの昇順
+// descOrderがtrueのときはキーの降順
+// 戻り値のokはコールバックから中断を要求されなかった場合はtrue、中断を要求された場合はfalse
 func Iterate(tree Tree, descOrder bool, callBack IterateCallBack) (ok bool) {
 	if descOrder {
 		return descIterateNode(tree.Root(), callBack)
@@ -455,6 +476,9 @@ func Iterate(tree Tree, descOrder bool, callBack IterateCallBack) (ok bool) {
 	}
 }
 
+// キーの順序でlower以上upper以下の範囲にあるノード全てを指定の順序で取得する
+// descOrderがfalseのときはキーの昇順
+// descOrderがtrueのときはキーの降順
 func Range(tree Tree, descOrder bool, lower, upper Key) (nodes []Node) {
 	RangeIterate(tree, descOrder, lower, upper, func(node Node) (breakIteration bool) {
 		nodes = append(nodes, node)
@@ -463,6 +487,10 @@ func Range(tree Tree, descOrder bool, lower, upper Key) (nodes []Node) {
 	return
 }
 
+// 木のノードをキーの順序でlower以上upper以下の範囲を順に巡ってコールバックを呼び出す
+// descOrderがfalseのときはキーの昇順
+// descOrderがtrueのときはキーの降順
+// 戻り値のokはコールバックから中断を要求されなかった場合はtrue、中断を要求された場合はfalse
 func RangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack IterateCallBack) (ok bool) {
 	if lower == nil && upper == nil {
 		return Iterate(tree, descOrder, callBack)
@@ -475,6 +503,8 @@ func RangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack IterateC
 	}
 }
 
+// 木を構成するノードの総数を求める
+// 木またはノードがインターフェースNodeCounterを実装している場合はNodeCountメソッドの戻り値をそのまま返す
 func Count(tree Tree) int {
 	if counter, ok := tree.(NodeCounter); ok {
 		return counter.NodeCount()
@@ -483,6 +513,7 @@ func Count(tree Tree) int {
 	}
 }
 
+// キーの順序でlower以上upper以下の範囲にあるノード総数を求める
 func CountRange(tree Tree, lower, upper Key) int {
 	if lower == nil && upper == nil {
 		return Count(tree)
@@ -494,6 +525,9 @@ func CountRange(tree Tree, lower, upper Key) int {
 	}
 }
 
+// キーの順序で最小となるキーを持つノードを返す
+// 木にひとつもノードが無い場合はnilを返す
+// 戻り値は木の一部のままなので編集すると木にも影響する
 func Min(tree Tree) (minimum Node) {
 	node := tree.Root()
 	if node == nil {
@@ -509,6 +543,9 @@ func Min(tree Tree) (minimum Node) {
 	return node
 }
 
+// キーの順序で最大となるキーを持つノードを返す
+// 木にひとつもノードが無い場合はnilを返す
+// 戻り値は木の一部のままなので編集すると木にも影響する
 func Max(tree Tree) (maximum Node) {
 	node := tree.Root()
 	if node == nil {
@@ -524,10 +561,14 @@ func Max(tree Tree) (maximum Node) {
 	return node
 }
 
-func DeleteAll(tree Tree, key Key) (modified Tree, values []KeyAndValue) {
+// 同一キーを持つノードが複数ある場合のDeleteの強化版
+// 指定したキーを持つ全てのノードを木から削除する
+func DeleteAll(tree Tree, key Key) (modified Tree, deletedvalues []KeyAndValue) {
 	return DeleteRange(tree, false, key, key)
 }
 
+// 同一キーを持つノードが複数ある場合のUpdateの強化版
+// 指定したキーを持つ全てのノードに対してコールバックが呼び出される
 func UpdateAll(tree Tree, key Key, callBack UpdateValueCallBack) (modified Tree, ok bool) {
 	return UpdateRangeIterate(tree, false, key, key, func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool) {
 		newValue, keepOldValue = callBack(key, oldValue)
@@ -535,18 +576,25 @@ func UpdateAll(tree Tree, key Key, callBack UpdateValueCallBack) (modified Tree,
 	})
 }
 
+// 同一キーを持つノードが複数ある場合のReplaceの強化版
+// 指定したキーを持つ全てのノードの値をnewValueに変更する
 func ReplaceAll(tree Tree, key Key, newValue interface{}) (modified Tree, ok bool) {
 	return UpdateRangeIterate(tree, false, key, key, func(key Key, oldValue interface{}) (interface{}, bool, bool) {
 		return newValue, false, false
 	})
 }
 
+// 同一キーを持つノードが複数ある場合のAlterの強化版
+// 指定したキーを持つ全てのノードに対してコールバックが呼び出される
 func AlterAll(tree Tree, key Key, callBack AlterNodeCallBack) (modified Tree, deletedValues []KeyAndValue, ok bool) {
 	return AlterRangeIterate(tree, false, key, key, func(node AlterNode) (request AlterRequest, breakIteration bool) {
 		return callBack(node), false
 	})
 }
 
+// 同一キーを持つノードが複数ある場合のFindの強化版
+// 指定したキーを持つ全てのノードを取得する
+// 指定のキーが存在しない場合はnilを返す
 func FindAll(tree Tree, key Key) (nodes []Node) {
 	// FindAllを頻繁に呼び出すでもない限りは
 	// Range呼び出しのオーバーヘッドなんて気にするほどのものではないはず
@@ -557,6 +605,9 @@ func FindAll(tree Tree, key Key) (nodes []Node) {
 	return nodes
 }
 
+// 同一キーを持つノードが複数ある場合のMinの強化版
+// 最小のキーを持つ全てのノードを取得する
+// 木にノードが存在しない場合はnilを返す
 func MinAll(tree Tree) (minimums []Node) {
 	minimum := Min(tree)
 	if minimum == nil {
@@ -570,6 +621,9 @@ func MinAll(tree Tree) (minimums []Node) {
 	return minimums
 }
 
+// 同一キーを持つノードが複数ある場合のMaxの強化版
+// 最大のキーを持つ全てのノードを取得する
+// 木にノードが存在しない場合はnilを返す
 func MaxAll(tree Tree) (maximums []Node) {
 	maximum := Max(tree)
 	if maximum == nil {
@@ -585,6 +639,7 @@ func MaxAll(tree Tree) (maximums []Node) {
 	return maximums
 }
 
+// 戻り値で使うKeyAndValueの実体
 type keyAndValue struct {
 	key   Key
 	value interface{}
@@ -598,6 +653,8 @@ func (kv *keyAndValue) Value() interface{} {
 	return kv.value
 }
 
+// DeleteとIterateを組み合わせた感じ
+// コールバックの戻り値で削除対象となるノードを決定していく
 func DeleteIterate(tree Tree, descOrder bool, callBack DeleteIterateCallBack) (modified Tree, values []KeyAndValue) {
 	var newRoot Node
 	var deleted []Node
@@ -625,6 +682,8 @@ func DeleteIterate(tree Tree, descOrder bool, callBack DeleteIterateCallBack) (m
 	}
 }
 
+// DeleteとRangeを組み合わせた感じ
+// lower以上upper以下のキーを持つノード全てを削除する
 func DeleteRange(tree Tree, descOrder bool, lower, upper Key) (modified Tree, values []KeyAndValue) {
 	return DeleteRangeIterate(tree, descOrder, lower, upper, func(key Key, value interface{}) (deleteNode, breakIteration bool) {
 		deleteNode = true
@@ -632,6 +691,9 @@ func DeleteRange(tree Tree, descOrder bool, lower, upper Key) (modified Tree, va
 	})
 }
 
+// DeleteとRangeIterateを組み合わせた感じ
+// lower以上upper以下のキーを持つノードに対して順にコールバックが呼ばれる
+// コールバックの戻り値で削除対象となるノードを決定していく
 func DeleteRangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack DeleteIterateCallBack) (modified Tree, values []KeyAndValue) {
 	if lower == nil && upper == nil {
 		return DeleteIterate(tree, descOrder, callBack)
@@ -663,6 +725,8 @@ func DeleteRangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack De
 	}
 }
 
+// UpdateとIterateを組み合わせた感じ
+// 巡っていく各ノードに対してコールバックが呼ばれる
 func UpdateIterate(tree Tree, descOrder bool, callBack UpdateIterateCallBack) (modified Tree, ok bool) {
 	if descOrder {
 		if newRoot, updated, _ := descUpdateIterate(tree.Root(), callBack); updated {
@@ -679,6 +743,8 @@ func UpdateIterate(tree Tree, descOrder bool, callBack UpdateIterateCallBack) (m
 	}
 }
 
+// UpdateとRangeを組み合わせた感じ
+// lower以上upper以下のキーを持つノードそれぞれに順にコールバックが呼ばれる
 func UpdateRange(tree Tree, descOrder bool, lower, upper Key, callBack UpdateValueCallBack) (modified Tree, ok bool) {
 	return UpdateRangeIterate(tree, descOrder, lower, upper, func(key Key, oldValue interface{}) (newValue interface{}, keepOldValue, breakIteration bool) {
 		newValue, keepOldValue = callBack(key, oldValue)
@@ -686,6 +752,8 @@ func UpdateRange(tree Tree, descOrder bool, lower, upper Key, callBack UpdateVal
 	})
 }
 
+// UpdateとRangeIterateを組み合わせた感じ
+// lower以上upper以下のキーを持つノードに順にコールバックが呼ばれる
 func UpdateRangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack UpdateIterateCallBack) (modified Tree, ok bool) {
 	if lower == nil && upper == nil {
 		return UpdateIterate(tree, descOrder, callBack)
@@ -706,12 +774,16 @@ func UpdateRangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack Up
 	}
 }
 
+// ReplaceとRangeを組み合わせた感じ
+// lower以上upper以下のキーを持つ全てのノードの値をnewValueに変更する
 func ReplaceRange(tree Tree, lower, upper Key, newValue interface{}) (modified Tree, ok bool) {
 	return UpdateRangeIterate(tree, false, lower, upper, func(key Key, oldValue interface{}) (interface{}, bool, bool) {
 		return newValue, false, false
 	})
 }
 
+// AlterとIterateを組み合わせた感じ
+// 巡っていく各ノードに対してコールバックが呼ばれる
 func AlterIterate(tree Tree, descOrder bool, callBack AlterIterateCallBack) (modified Tree, deletedValues []KeyAndValue, ok bool) {
 	var newRoot Node
 	var deleted []Node
@@ -738,12 +810,16 @@ func AlterIterate(tree Tree, descOrder bool, callBack AlterIterateCallBack) (mod
 	}
 }
 
+// AlterとRangeを組み合わせた感じ
+// lower以上upper以下のキーを持つノードそれぞれに順にコールバックが呼ばれる
 func AlterRange(tree Tree, descOrder bool, lower, upper Key, callBack AlterNodeCallBack) (modified Tree, deletedValues []KeyAndValue, ok bool) {
 	return AlterRangeIterate(tree, descOrder, lower, upper, func(node AlterNode) (request AlterRequest, breakIteration bool) {
 		return callBack(node), false
 	})
 }
 
+// UpdateとRangeIterateを組み合わせた感じ
+// lower以上upper以下のキーを持つノードに順にコールバックが呼ばれる
 func AlterRangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack AlterIterateCallBack) (modified Tree, deletedValues []KeyAndValue, ok bool) {
 	if lower == nil && upper == nil {
 		return AlterIterate(tree, descOrder, callBack)
@@ -776,30 +852,39 @@ func AlterRangeIterate(tree Tree, descOrder bool, lower, upper Key, callBack Alt
 	}
 }
 
+// キーが比較対象(CompareToの引数のキー)より小さい場合にtrue、それ以外はfalse
 func (ordering KeyOrdering) LessThan() bool {
 	return int(ordering) < 0
 }
 
+// キーが比較対象(CompareToの引数のキー)以下の場合にtrue、それ以外はfalse
 func (ordering KeyOrdering) LessThanOrEqualTo() bool {
 	return int(ordering) <= 0
 }
 
+// キーが比較対象(CompareToの引数のキー)と等しい場合にtrue、それ以外はfalse
 func (ordering KeyOrdering) EqualTo() bool {
 	return ordering == EqualToOtherKey
 }
 
+// キーが比較対象(CompareToの引数のキー)と等しくない場合にtrue、それ以外はfalse
 func (ordering KeyOrdering) NotEqualTo() bool {
 	return ordering != EqualToOtherKey
 }
 
+// キーが比較対象(CompareToの引数のキー)より大きい場合にtrue、それ以外はfalse
 func (ordering KeyOrdering) GreaterThan() bool {
 	return 0 < int(ordering)
 }
 
+// キーが比較対象(CompareToの引数のキー)以上の場合にtrue、それ以外はfalse
 func (ordering KeyOrdering) GreaterThanOrEqualTo() bool {
 	return 0 <= int(ordering)
 }
 
+// LessThanメソッドとLessThanOrEqualToメソッドを引数のorEqualで使い分ける
+// orEqualがtrueの場合、LessThanOrEqualToが呼ばれる
+// orEqualがfalseの場合、LessThanが呼ばれる
 func (ordering KeyOrdering) Less(orEqual bool) bool {
 	if orEqual {
 		return ordering.LessThanOrEqualTo()
@@ -808,6 +893,9 @@ func (ordering KeyOrdering) Less(orEqual bool) bool {
 	}
 }
 
+// GreaterThanメソッドとGreaterThanOrEqualToメソッドを引数のorEqualで使い分ける
+// orEqualがtrueの場合、GreaterThanOrEqualToが呼ばれる
+// orEqualがfalseの場合、GreaterThanが呼ばれる
 func (ordering KeyOrdering) Greater(orEqual bool) bool {
 	if orEqual {
 		return ordering.GreaterThanOrEqualTo()
@@ -816,6 +904,7 @@ func (ordering KeyOrdering) Greater(orEqual bool) bool {
 	}
 }
 
+// 引数のノードをルートとする木(もしくはサブツリー)のノード総数を数える
 func countNode(node Node) int {
 	if node == nil {
 		return 0
@@ -829,6 +918,8 @@ func countNode(node Node) int {
 	return 1 + countNode(node.LeftChild()) + countNode(node.RightChild())
 }
 
+// 引数のノードをルートとする木(もしくはサブツリー)のキーがlower以上upper以下のノード総数を数える
+// countRangeは同一キーを許可しない木に対して呼ばれる
 func countRange(node Node, lower, upper Key) int {
 	if node == nil {
 		return 0
@@ -911,6 +1002,8 @@ func countRange(node Node, lower, upper Key) int {
 	panic("unreachable?")
 }
 
+// 引数のノードをルートとする木(もしくはサブツリー)のキーがlower以上upper以下のノード総数を数える
+// countExtendedRangeは同一キーを許可する木に対して呼ばれる
 func countExtendedRange(node Node, lower, upper Key) int {
 	if node == nil {
 		return 0
@@ -971,6 +1064,7 @@ func countExtendedRange(node Node, lower, upper Key) int {
 	}
 }
 
+// ノードの高さ情報を取得する
 func getHeight(node Node) int {
 	if node == nil {
 		return 0
@@ -979,14 +1073,21 @@ func getHeight(node Node) int {
 	}
 }
 
+// 左右の子の高さの違いを表現する
 type balance int
 
 const (
-	balanced      balance = 0
-	leftIsHigher  balance = -1
+	// 左右の子の高さに違いはないと見なすことを表現する
+	balanced balance = 0
+
+	// 左の子の高さが右の子の高さより高いことを表現する
+	leftIsHigher balance = -1
+
+	// 左の子の高さより右の子の高さが高いことを表現する
 	rightIsHigher balance = 1
 )
 
+// AVL木における回転の必要性を取得する
 func checkBalance(node RealNode) balance {
 	if node == nil {
 		return balanced
@@ -1015,6 +1116,7 @@ func checkBalance(node RealNode) balance {
 	// その場合は正常動作を保証する必要もないわけで…
 }
 
+// ２つのノードの高さに違いがあるかを判定する
 func compareNodeHeight(leftNode, rightNode Node) balance {
 	heightL := getHeight(leftNode)
 	heightR := getHeight(rightNode)
@@ -1030,6 +1132,7 @@ func compareNodeHeight(leftNode, rightNode Node) balance {
 	}
 }
 
+// 左右の子ノードの高さに違いがあるかを判定する
 func compareChildHeight(node Node) balance {
 	if node == nil {
 		return balanced
@@ -1038,6 +1141,7 @@ func compareChildHeight(node Node) balance {
 	}
 }
 
+// 2つの引数のうち大きいほうの値を返す
 func intMax(a, b int) int {
 	if a < b {
 		return b
@@ -1045,30 +1149,36 @@ func intMax(a, b int) int {
 	return a
 }
 
+// 左右の子のノードから親ノードの新しい高さを計算して返す
 func calcNewHeight(leftChild, rightChild Node) int {
 	leftHeight := getHeight(leftChild)
 	rightHeight := getHeight(rightChild)
 	return 1 + intMax(leftHeight, rightHeight)
 }
 
+// 対象のノードに新しい左右の子を設定する
 func setChildren(root RealNode, leftChild, rightChild Node) RealNode {
 	newHeight := calcNewHeight(leftChild, rightChild)
 	return root.SetChildren(leftChild, rightChild, newHeight)
 }
 
+// 対象のノードに新しい左の子を設定する
 func setLeftChild(root RealNode, newLeftChild Node) RealNode {
 	return setChildren(root, newLeftChild, root.RightChild())
 }
 
+// 対象のノードに新しい右の子を設定する
 func setRightChild(root RealNode, newRightChild Node) RealNode {
 	return setChildren(root, root.LeftChild(), newRightChild)
 }
 
+// 対象のノードの新しい左右の子と新しい値を設定する
 func resetNode(root RealNode, newLeftChild, newRightChild Node, newValue interface{}) RealNode {
 	newHeight := calcNewHeight(newLeftChild, newRightChild)
 	return root.Set(newLeftChild, newRightChild, newHeight, newValue)
 }
 
+// Insertの処理を補助する
 type insertHelper struct {
 	tree            *RealTree
 	replaceIfExists bool
@@ -1076,18 +1186,22 @@ type insertHelper struct {
 	value           *interface{}
 }
 
+// RealTreeのNewNodeを呼び出す
 func (helper *insertHelper) newNode() RealNode {
 	return (*helper.tree).NewNode(nil, nil, 1, (*helper.key).Copy(), *helper.value)
 }
 
+// 挿入するキーと対象のノードのキーと比較する
 func (helper *insertHelper) compareKey(node Node) KeyOrdering {
 	return (*helper.key).CompareTo(node.Key())
 }
 
+// 木が同一キーを許可するかを取得する
 func (helper *insertHelper) allowDuplicateKeys() bool {
 	return (*helper.tree).AllowDuplicateKeys()
 }
 
+// 木(またはサブツリー)に新しいキーと値を挿入する処理
 func (helper *insertHelper) insertTo(root Node) (newRoot RealNode, ok bool) {
 	if root == nil {
 		return helper.newNode(), true
@@ -1126,9 +1240,9 @@ func (helper *insertHelper) insertTo(root Node) (newRoot RealNode, ok bool) {
 	return newRoot, true
 }
 
+// 木の回転の処理
 func rotate(root RealNode) RealNode {
-	// 無限ループは不要な気がする
-	// 複数のノードをまとめて削除するとバランス崩れが発生しそうだからその時必要？
+	// 無限ループは複数のノードをまとめて削除した場合のバランス崩れを解消するためのもの
 	for {
 		switch checkBalance(root) {
 		case leftIsHigher:
@@ -1143,6 +1257,8 @@ func rotate(root RealNode) RealNode {
 	}
 }
 
+// 時計回りに木を回転させる
+// 左側の子孫ノードが親に、親ノードが右側サブツリーのルートノードに、なる
 func rotateRight(root RealNode) RealNode {
 	oldRootLeftChild := root.LeftChild().(RealNode)
 	if compareChildHeight(oldRootLeftChild) == rightIsHigher {
@@ -1159,6 +1275,8 @@ func rotateRight(root RealNode) RealNode {
 	}
 }
 
+// 反時計回りに木を回転
+// 右側の子孫ノードが親に、親ノードが左側サブツリーのルートノードに、なる
 func rotateLeft(root RealNode) RealNode {
 	oldRootRightChild := root.RightChild().(RealNode)
 	if compareChildHeight(oldRootRightChild) == leftIsHigher {
@@ -1175,6 +1293,7 @@ func rotateLeft(root RealNode) RealNode {
 	}
 }
 
+// 指定キーを持つノードを木から取り除く
 func removeNode(root Node, key Key) (newRoot, removed Node, ok bool) {
 	if root == nil {
 		return nil, nil, false
@@ -1219,6 +1338,7 @@ func removeNode(root Node, key Key) (newRoot, removed Node, ok bool) {
 	return newRoot, removed, true
 }
 
+// 木(またはサブツリー)の最小のキーを持つノードを木(またはサブツリー)から取り除く
 func removeMin(root Node) (newRoot, removed Node) {
 	if root == nil {
 		return nil, nil
@@ -1237,6 +1357,7 @@ func removeMin(root Node) (newRoot, removed Node) {
 	return newRoot, removed
 }
 
+// 木(またはサブツリー)の最大のキーを持つノードを木(またはサブツリー)から取り除く
 func removeMax(root Node) (newRoot, removed Node) {
 	if root == nil {
 		return nil, nil
@@ -1255,6 +1376,7 @@ func removeMax(root Node) (newRoot, removed Node) {
 	return newRoot, removed
 }
 
+// 昇順Iterateの中身
 func ascIterateNode(node Node, callBack IterateCallBack) (ok bool) {
 	if node == nil {
 		return true
@@ -1268,6 +1390,7 @@ func ascIterateNode(node Node, callBack IterateCallBack) (ok bool) {
 	return ascIterateNode(node.RightChild(), callBack)
 }
 
+// 降順Iterateの中身
 func descIterateNode(node Node, callBack IterateCallBack) (ok bool) {
 	if node == nil {
 		return true
@@ -1281,17 +1404,32 @@ func descIterateNode(node Node, callBack IterateCallBack) (ok bool) {
 	return descIterateNode(node.LeftChild(), callBack)
 }
 
+// Range系,RangeIterate系において木を巡る判定に用いる
+// keyBoundsのメソッドによる判定結果に対して実装されるメソッド
 type boundsChecker interface {
+	// 対象ノードの左の子(サブツリー)を含める必要がある場合はtrue
 	includeLower() bool
+
+	// 対象ノードを含める必要がある場合はtrue
 	includeKey() bool
+
+	// 対象ノードの右の子(サブツリー)を含める必要がある場合はtrue
 	includeUpper() bool
 }
 
+// Range系,RangeIterate系において木を巡る判定に用いる
+// Range系,RangeIterate系の引数のlower,upperによって示される範囲情報に実装されるメソッド
 type keyBounds interface {
+	// lower情報と対象のキーとを比較する
 	checkLower(key Key) boundsChecker
+
+	// upper情報と対象のキーとを比較する
 	checkUpper(key Key) boundsChecker
 }
 
+// lower,upperによってしめさえる範囲情報を返す
+// 引数のextendedは木が同一キーを許す場合はtrue、同一キーを許さない場合はfalseにする必要がある
+// 同一キーの挿入箇所は右の子のサブツリーに挿入されるが、木の回転により同一キーが左の子のサブツリーに移動することがある
 func newKeyBounds(lower, upper Key, extended bool) keyBounds {
 	if lower == nil {
 		return &upperBound{upper, extended}
@@ -1302,6 +1440,7 @@ func newKeyBounds(lower, upper Key, extended bool) keyBounds {
 	}
 }
 
+// lower,upperともにKeyが指定された場合の範囲情報
 type bothBounds struct {
 	lower, upper Key
 	ext          bool
@@ -1315,6 +1454,7 @@ func (bounds *bothBounds) checkUpper(key Key) boundsChecker {
 	return &upperBoundsChecker{key.CompareTo(bounds.upper), bounds.ext}
 }
 
+// upperのみが指定された場合の範囲情報
 type upperBound struct {
 	upper Key
 	ext   bool
@@ -1328,6 +1468,7 @@ func (bounds *upperBound) checkUpper(key Key) boundsChecker {
 	return &upperBoundsChecker{key.CompareTo(bounds.upper), bounds.ext}
 }
 
+// lowerのみが指定された場合の範囲情報
 type lowerBound struct {
 	lower Key
 	ext   bool
@@ -1341,12 +1482,15 @@ func (bounds *lowerBound) checkUpper(key Key) boundsChecker {
 	return noBoundsChecker{}
 }
 
+// 範囲の制限がない(すなわち全範囲を含む必要がある)という判定結果を表す
 type noBoundsChecker struct{}
 
 func (noBoundsChecker) includeLower() bool { return true }
 func (noBoundsChecker) includeKey() bool   { return true }
 func (noBoundsChecker) includeUpper() bool { return true }
 
+// 上限側にだけ制限がある(下限には制限がない)という判定結果を表す
+// 対象ノードとその右の子に対して含むかの判定が必要になる
 type upperBoundsChecker struct {
 	cmpUpper KeyOrdering
 	ext      bool
@@ -1364,6 +1508,8 @@ func (checker *upperBoundsChecker) includeUpper() bool {
 	return checker.cmpUpper.Less(checker.ext)
 }
 
+// 下限側にだけ制限がある(上限には制限がない)という判定結果を表す
+// 対象ノードとその左の子に対して含むかの判定が必要になる
 type lowerBoundsChecker struct {
 	cmpLower KeyOrdering
 	ext      bool
@@ -1381,6 +1527,7 @@ func (checker *lowerBoundsChecker) includeUpper() bool {
 	return true
 }
 
+// 昇順RangeIterateの中身
 func ascRangeNode(node Node, bounds keyBounds, callBack IterateCallBack) (ok bool) {
 	if node == nil {
 		return true
@@ -1405,6 +1552,7 @@ func ascRangeNode(node Node, bounds keyBounds, callBack IterateCallBack) (ok boo
 	}
 }
 
+// 降順RangeIterateの中身
 func descRangeNode(node Node, bounds keyBounds, callBack IterateCallBack) (ok bool) {
 	if node == nil {
 		return true
@@ -1429,6 +1577,7 @@ func descRangeNode(node Node, bounds keyBounds, callBack IterateCallBack) (ok bo
 	}
 }
 
+// Updateの中身
 func updateValue(node Node, key Key, callBack UpdateValueCallBack) (newNode RealNode, ok bool) {
 	if node == nil {
 		return nil, false
@@ -1459,6 +1608,7 @@ func updateValue(node Node, key Key, callBack UpdateValueCallBack) (newNode Real
 	}
 }
 
+// 昇順UpdateIterateの中身
 func ascUpdateIterate(root Node, callBack UpdateIterateCallBack) (newRoot RealNode, updated, breakIteration bool) {
 	if root == nil {
 		return nil, false, false
@@ -1507,6 +1657,7 @@ func ascUpdateIterate(root Node, callBack UpdateIterateCallBack) (newRoot RealNo
 	return newRoot, updated, breakIteration
 }
 
+// 降順UpdateIterateの中身
 func descUpdateIterate(root Node, callBack UpdateIterateCallBack) (newRoot RealNode, updated, breakIteration bool) {
 	if root == nil {
 		return nil, false, false
@@ -1557,6 +1708,7 @@ func descUpdateIterate(root Node, callBack UpdateIterateCallBack) (newRoot RealN
 	return newRoot, updated, breakIteration
 }
 
+// 昇順UpdateRangeIterateの中身
 func ascUpdateRange(root Node, bounds keyBounds, callBack UpdateIterateCallBack) (newRoot RealNode, updated, breakIteration bool) {
 	if root == nil {
 		return nil, false, false
@@ -1622,6 +1774,7 @@ func ascUpdateRange(root Node, bounds keyBounds, callBack UpdateIterateCallBack)
 	return newRoot, updated, breakIteration
 }
 
+// 降順UpdateRangeIterateの中身
 func descUpdateRange(root Node, bounds keyBounds, callBack UpdateIterateCallBack) (newRoot RealNode, updated, breakIteration bool) {
 	if root == nil {
 		return nil, false, false
@@ -1687,6 +1840,7 @@ func descUpdateRange(root Node, bounds keyBounds, callBack UpdateIterateCallBack
 	return newRoot, updated, breakIteration
 }
 
+// 昇順DeleteIterateの中身
 func ascDeleteIterate(root Node, callBack DeleteIterateCallBack) (newRoot Node, deleted []Node, breakIteration bool) {
 	if root == nil {
 		return nil, nil, false
@@ -1755,6 +1909,7 @@ func ascDeleteIterate(root Node, callBack DeleteIterateCallBack) (newRoot Node, 
 	return newRoot, deleted, breakIteration
 }
 
+// 降順DeleteIterateの中身
 func descDeleteIterate(root Node, callBack DeleteIterateCallBack) (newRoot Node, deleted []Node, breakIteration bool) {
 	if root == nil {
 		return nil, nil, false
@@ -1823,6 +1978,7 @@ func descDeleteIterate(root Node, callBack DeleteIterateCallBack) (newRoot Node,
 	return newRoot, deleted, breakIteration
 }
 
+// 昇順DeleteRangeIterateの中身
 func ascDeleteRange(root Node, bounds keyBounds, callBack DeleteIterateCallBack) (newRoot Node, deleted []Node, breakIteration bool) {
 	if root == nil {
 		return nil, nil, false
@@ -1905,6 +2061,7 @@ func ascDeleteRange(root Node, bounds keyBounds, callBack DeleteIterateCallBack)
 	return newRoot, deleted, breakIteration
 }
 
+// 降順DeleteRangeIterateの中身
 func descDeleteRange(root Node, bounds keyBounds, callBack DeleteIterateCallBack) (newRoot Node, deleted []Node, breakIteration bool) {
 	if root == nil {
 		return nil, nil, false
@@ -1986,6 +2143,7 @@ func descDeleteRange(root Node, bounds keyBounds, callBack DeleteIterateCallBack
 	return newRoot, deleted, breakIteration
 }
 
+// AlterNodeにおいて実体のNodeを取得するためのバックドア
 func (node *alterNode) Node() Node {
 	return node.inner
 }
@@ -2013,11 +2171,13 @@ func (*alterNode) Delete() (request AlterRequest) {
 	return
 }
 
+// ノードを変更も削除もせず維持することを指定する
 func (request *AlterRequest) Keep() (ret AlterRequest) {
 	*request = ret
 	return
 }
 
+// ノードの値をnewValueに置き換えることを指定する
 func (request *AlterRequest) Replace(newValue interface{}) (ret AlterRequest) {
 	ret.replaceValue = true
 	ret.newValue = newValue
@@ -2025,24 +2185,29 @@ func (request *AlterRequest) Replace(newValue interface{}) (ret AlterRequest) {
 	return
 }
 
+// ノードを削除することを指定する
 func (request *AlterRequest) Delete() (ret AlterRequest) {
 	ret.deleteNode = true
 	*request = ret
 	return
 }
 
+// 維持指定だったかどうか
 func (request *AlterRequest) isKeepRequest() bool {
 	return !request.replaceValue && !request.deleteNode
 }
 
+// 変更指定だったかどうか
 func (request *AlterRequest) isReplaceRequest() bool {
 	return request.replaceValue && !request.deleteNode
 }
 
+// 削除指定だったかどうか
 func (request *AlterRequest) isDeleteRequest() bool {
 	return !request.replaceValue && request.deleteNode
 }
 
+// Alterの中身
 func alter(node Node, key Key, callBack AlterNodeCallBack) (newNode, deleted Node, ok bool) {
 	if node == nil {
 		// nodeの返却は必要か？
@@ -2090,6 +2255,7 @@ func alter(node Node, key Key, callBack AlterNodeCallBack) (newNode, deleted Nod
 	}
 }
 
+// 昇順AlterIterateの中身
 func ascAlterIterate(root Node, callBack AlterIterateCallBack) (newRoot Node, deleted []Node, anyChanged, breakIteration bool) {
 	if root == nil {
 		return nil, nil, false, false
@@ -2166,6 +2332,7 @@ func ascAlterIterate(root Node, callBack AlterIterateCallBack) (newRoot Node, de
 	return newRoot, deleted, anyChanged, breakIteration
 }
 
+// 降順AlterIterateの中身
 func descAlterIterate(root Node, callBack AlterIterateCallBack) (newRoot Node, deleted []Node, anyChanged, breakIteration bool) {
 	if root == nil {
 		return nil, nil, false, false
@@ -2242,6 +2409,7 @@ func descAlterIterate(root Node, callBack AlterIterateCallBack) (newRoot Node, d
 	return newRoot, deleted, anyChanged, breakIteration
 }
 
+// 昇順AlterRangeIterateの中身
 func ascAlterRange(root Node, bounds keyBounds, callBack AlterIterateCallBack) (newRoot Node, deleted []Node, anyChanged, breakIteration bool) {
 	if root == nil {
 		return nil, nil, false, false
@@ -2330,6 +2498,7 @@ func ascAlterRange(root Node, bounds keyBounds, callBack AlterIterateCallBack) (
 	return newRoot, deleted, anyChanged, breakIteration
 }
 
+// 降順AlterRangeIterateの中身
 func descAlterRange(root Node, bounds keyBounds, callBack AlterIterateCallBack) (newRoot Node, deleted []Node, anyChanged, breakIteration bool) {
 	if root == nil {
 		return nil, nil, false, false
