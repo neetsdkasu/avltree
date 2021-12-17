@@ -1,6 +1,9 @@
 // Author: Leonardone @ NEETSDKASU
 // License: MIT
 
+// github.com/neetsdkasu/avltreeのKeyの実装例
+// int型をそのままキーにしてある
+// int型の自然順序をそのままキーの順序としてある
 package intkey
 
 import "github.com/neetsdkasu/avltree"
