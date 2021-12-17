@@ -1,3 +1,6 @@
+// Author: Leonardone @ NEETSDKASU
+// License: MIT
+
 // 概要
 // AVL木の構築と操作をするパッケージ？
 //

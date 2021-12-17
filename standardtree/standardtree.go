@@ -1,3 +1,6 @@
+// Author: Leonardone @ NEETSDKASU
+// License: MIT
+
 package standardtree
 
 import "github.com/neetsdkasu/avltree"
