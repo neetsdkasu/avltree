@@ -1,6 +1,46 @@
 // Author: Leonardone @ NEETSDKASU
 // License: MIT
 
+// github.com/neetsdkasu/avltreeのためのラッパーの実装例
+// キーと値のやりとりをint型に制限する
+// 内部での実際のキーはintkeyのIntKeyを使用している
+//
+// int型に制限するのはラッパーのメソッドの引数や戻り値だけではなく
+// KeyAndValue,Node,AlterNode,AlterRequestもintwrapper独自でint型用に定義しなおされている
+//
+// コード例
+//
+//		import (
+//			"fmt"
+//			"github.com/neetsdkasu/avltree/intwrapper"
+//			"github.com/neetsdkasu/avltree/simpletree"
+//		)
+//		func Example_intwrapper() {
+//			tree := simpletree.New(false)
+//			w := intwrapper.New(tree)
+//			w.Insert(12, 345)
+//			w.Insert(67, 890)
+//			w.Insert(333, 666)
+//			w.Insert(-5, 12345)
+//			w.Delete(67)
+//			w.Update(333, func(key, oldValue int) (newValue int, keepOldValue bool) {
+//				newValue = oldValue * 3
+//				return
+//			})
+//			if node := w.Find(12); node != nil {
+//				fmt.Println("Find!", node.Key(), node.Value())
+//			}
+//			w.Iterate(func(node intwrapper.Node) (breakIteration bool) {
+//				fmt.Println("Iterate!", node.Key(), node.Value())
+//				return
+//			})
+//			// Output:
+//			// Find! 12 345
+//			// Iterate! -5 12345
+//			// Iterate! 12 345
+//			// Iterate! 333 1998
+//		}
+//
 package intwrapper
 
 import (
@@ -405,6 +445,7 @@ func (node *nodeWrapper) SetValue(newValue int) {
 	node.inner.SetValue(newValue)
 }
 
+// 内部で保持している実際のノード(avltree.Node)へアクセスするためのメソッド(バックドア？)
 func (node *nodeWrapper) Node() avltree.Node {
 	return node.inner
 }
@@ -431,6 +472,7 @@ func (*alterNodeWrapper) Delete() (request AlterRequest) {
 	return
 }
 
+// AlterRequest内部で保持しているノードにアクセスするメソッド
 func (node *alterNodeWrapper) Node() Node {
 	if nodeGetter, ok := node.inner.(interface{ Node() avltree.Node }); ok {
 		return wrapNode(nodeGetter.Node())
